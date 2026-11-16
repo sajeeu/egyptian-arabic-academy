@@ -411,6 +411,7 @@ details .list{padding:0 0 10px}
 .adv .chev{width:16px;height:16px} .adv[open] .chev{transform:rotate(180deg)}
 .adv-in{display:flex;flex-direction:column;gap:12px;padding:0 12px 12px}
 .pgw .adv textarea.code{background:var(--surface)}
+.bk-more .bk-row{background:var(--surface)}   /* older backups sit on white inside the tinted fold */
 .reset-row{display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:14px;border-top:1px solid var(--line)}
 .reset-row .pdesc{margin:0;align-self:stretch}   /* the explanation reads left to right; the Start over button sits in the middle */
 .tint{padding:12px 14px;border-radius:14px;background:var(--bg);border:1px solid var(--line)}
@@ -1410,12 +1411,17 @@ function progress(_, opts){
 
       <section class="card pcard o4" id="backupCard" aria-labelledby="backup-h">
         <div><h2 id="backup-h">Daily backup</h2><p class="pdesc">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so now and then save a backup file too.</p></div>
-        ${backups().length ? `<div class="bk-list">` + backups().map((b, i) => { const t = new Date(b.at);      // when the copy was actually made
+        ${(() => { const list = backups();
+          if (!list.length) return `<p class="pdesc">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`;
+          const row = (b, i) => { const t = new Date(b.at);      // when the copy was actually made
             const when = t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5);
             const bp = Object.values(b.state.lessons || {}).reduce((a, x) => a + x.confirmed.length, 0);
             return `<div class="tint bk-row"><div><b>Saved ${esc(when)}</b><span>${(b.state.completed || []).length}/64 lessons complete · ${bp} ${bp === 1 ? 'phrase' : 'phrases'} confirmed</span></div>
-              <button class="btn ghost again" data-bk="${i}">${ic('retry', 'sm')}Restore</button></div>`; }).join('') + `</div>`
-          : `<p class="pdesc">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`}
+              <button class="btn ghost again" data-bk="${i}">${ic('retry', 'sm')}Restore</button></div>`; };
+          // The newest backup is always shown; older ones fold away until asked for.
+          const older = list.length - 1;
+          return `<div class="bk-list">${row(list[0], 0)}</div>` + (older ? `<details class="adv bk-more" id="bkMore"><summary>${ic('chev', 'chev')}<span>Show ${older} older ${older === 1 ? 'backup' : 'backups'}</span></summary>
+            <div class="adv-in"><div class="bk-list">${list.slice(1).map((b, i) => row(b, i + 1)).join('')}</div></div></details>` : ''); })()}
         <div class="row pair">
           <button class="btn pale" id="saveFile">${ic('download', 'sm')}Save backup file</button>
           <label class="btn ghost" for="loadFile">${ic('upload', 'sm')}Load backup file</label>
@@ -1424,6 +1430,9 @@ function progress(_, opts){
         <div id="bkMsg"></div>
       </section>
     </div></div></div>`;
+  const bkMore = document.getElementById('bkMore');      // the fold's label follows its state
+  if (bkMore) bkMore.addEventListener('toggle', () => { const s = bkMore.querySelector('summary span'), n = backups().length - 1;
+    s.textContent = bkMore.open ? `Hide older ${n === 1 ? 'backup' : 'backups'}` : `Show ${n} older ${n === 1 ? 'backup' : 'backups'}`; });
   const keyIn = document.getElementById('key');
   keyIn.oninput = () => document.getElementById('saveKey').disabled = !keyIn.value.trim();
   if (opts?.askKey) document.getElementById('keycard').scrollIntoView();
