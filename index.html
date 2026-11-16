@@ -504,6 +504,7 @@ details.mod.opening .lesson-row{animation:eaa-in .32s cubic-bezier(.2,.7,.2,1) b
 #app.enter-soft :is(.phrase,.lprog,.hero,.pv-cont){animation:eaa-soft .28s cubic-bezier(.2,.7,.2,1) backwards}
 @keyframes eaa-toast{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
 .toast.pop{animation:eaa-toast .26s cubic-bezier(.2,.7,.2,1)}
+.toast .muted{color:inherit;opacity:.82;font-weight:500}   /* secondary text, e.g. "(Google voice)", in a softer shade of the toast's own text */
 @keyframes eaa-modal{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
 @keyframes eaa-fade{from{opacity:0}to{opacity:1}}
 dialog.modal[open]{animation:eaa-modal .24s cubic-bezier(.2,.7,.2,1)}
