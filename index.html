@@ -660,7 +660,7 @@ async function speak(text, rate = 0.85, msg){
   if (!('speechSynthesis' in window) || !arVoice){
     // Many phones and browsers have no Arabic voice: use Google's voice instead (same free key as the tutor).
     if (localStorage.getItem('gemini_key')) return geminiSay(text, rate < 0.7, say);
-    return say('This browser has no Arabic voice. To hear the phrases, add your free Google key in <b>Progress → Tutor setup</b>; Listen will then use Google\'s voice.');
+    return say('This browser has no Arabic voice. To hear the phrases, add your free Google key in <b>Settings → Tutor setup</b>; Listen will then use Google\'s voice.');
   }
   if (speechSynthesis.speaking || speechSynthesis.pending){ speechSynthesis.cancel(); await new Promise(r => setTimeout(r, 80)); }
   speechSynthesis.resume();                                   // un-sticks a paused speech queue
@@ -801,7 +801,7 @@ function geminiSay(text, slow, say){
     }
     if (sc.turnComplete){ if (job.chunks.length) sayCache.set(id, job.chunks); ws.onclose = null; ws.close(); doneAfterPlayback(); }
   };
-  ws.onclose = e => { if (sayJob === job && !job.chunks.length){ say(`Google's voice couldn't play${e.reason ? ` (${esc(e.reason)})` : ''}. Check your Google key in Progress → Tutor setup.`); job.stop(); } };
+  ws.onclose = e => { if (sayJob === job && !job.chunks.length){ say(`Google's voice couldn't play${e.reason ? ` (${esc(e.reason)})` : ''}. Check your Google key in Settings → Tutor setup.`); job.stop(); } };
 }
 
 async function startTutor(L, ex){
@@ -845,7 +845,7 @@ async function startTutor(L, ex){
   ws.onerror = () => {};
   ws.onclose = e => {
     if (tutor !== t) return;
-    const why = e.reason ? esc(e.reason) : (t.ready ? 'The conversation ended.' : 'Could not connect. Check your Google API key on the Progress page.');
+    const why = e.reason ? esc(e.reason) : (t.ready ? 'The conversation ended.' : 'Could not connect. Check your Google key in Settings → Tutor setup.');
     setStatus(`${t.ready ? '' : '<span style="color:var(--danger)">'}${why}${t.ready ? '' : '</span>'} Tap "Start talking" to begin again.`);
     stopTutor(); endTutorUI(true);
   };
@@ -897,6 +897,7 @@ const ICONS = {
   upload: '<path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>',
   download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   phone: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
+  gear: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
   trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/>',
   cap: '<path d="M2 9 12 4l10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
@@ -1349,7 +1350,7 @@ function progress(_, opts){
         <div class="bar8" role="img" aria-label="${c} of ${ls.length} lessons complete${p ? `, ${p} in progress` : ''}">${ls.map(l => `<span class="${isDone(l.id) ? 'c' : status(l.id) === 'in_progress' ? 'p' : ''}"></span>`).join('')}</div></div></div>`; }).join('');
   $app.classList.add('wide');
   $app.innerHTML = `<div class="pgw">
-    <h1 class="ltitle">Progress</h1>
+    <h1 class="ltitle">Progress &amp; settings</h1>
     <div class="pg"><div class="pg-col">
       <section class="pstats o1" aria-label="Lesson totals">
         <div class="pstat"><span class="pst-ic">${ic('cap')}</span><div><b>${d}</b><span>Complete</span></div></div>
@@ -1369,7 +1370,7 @@ function progress(_, opts){
         <button class="btn primary" id="installBtn"${installPrompt ? '' : ' hidden'}>${ic('download', 'sm')}Add to Home Screen</button>
         <div class="howto">
           <div class="tint${isIOS ? ' first' : ''}"><b>iPhone or iPad</b><p>In Safari, tap the Share button, then <b>Add to Home Screen</b>.</p>
-            <div class="ios-warn">${ic('alert', 'sm')}<p><b>Important:</b> on iPhone and iPad the Home Screen icon keeps its own progress, separate from Safari. If you've already started in Safari, first tap <b>Save backup file</b> (in Daily backup on this page). Then open the new icon, go to Progress and tap <b>Load backup file</b>.</p></div></div>
+            <div class="ios-warn">${ic('alert', 'sm')}<p><b>Important:</b> on iPhone and iPad the Home Screen icon keeps its own progress, separate from Safari. If you've already started in Safari, first tap <b>Save backup file</b> (in Daily backup on this page). Then open the new icon, go to Settings and tap <b>Load backup file</b>.</p></div></div>
           <div class="tint"><b>Android</b><p>In Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</p></div>
         </div>
       </section>
@@ -1500,7 +1501,8 @@ function finished(){
 }
 
 document.getElementById('logoMark').innerHTML = ic('steth');
-const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], progress: ['chart', 'Progress'] };
+// The third tab is "Settings": it holds the tutor key, backups and install steps as well as the progress summary.
+const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], progress: ['gear', 'Settings'] };
 document.querySelectorAll('#nav button').forEach(b => { const [i, t] = NAV[b.dataset.v]; b.innerHTML = `<span class="tab-ic">${ic(i)}</span><span>${t}</span>`; b.onclick = () => show(b.dataset.v); });
 show('dashboard');
 dailyBackup(); setInterval(dailyBackup, 60000);                     // catch up a missed 23:00, then check every minute
@@ -1526,7 +1528,7 @@ function renderAppBar(){
   const close = `<button class="btn" id="appbarNo">${kind === 'install' ? 'Not now' : 'Got it'}</button>`;
   bar.innerHTML = kind === 'install'
     ? `<div class="note">${ic('phone')}<div><b>Install the academy as an app.</b> It gets its own icon and opens full screen.</div><button class="btn" id="appbarYes">${ic('download', 'sm')}Install</button>${close}</div>`
-    : `<div class="note">${ic('info')}<div><b>Started in Safari before?</b> Your progress there stays in Safari. To bring it here: in Safari, open Progress and tap <b>Save backup file</b>; then here, open Progress and tap <b>Load backup file</b>.</div>${close}</div>`;
+    : `<div class="note">${ic('info')}<div><b>Started in Safari before?</b> Your progress there stays in Safari. To bring it here: in Safari, open Settings and tap <b>Save backup file</b>; then here, open Settings and tap <b>Load backup file</b>.</div>${close}</div>`;
   document.getElementById('appbarNo').onclick = () => { setFlagOff(kind === 'install' ? 'eaa_install_banner_off' : 'eaa_ios_move_hint_off'); renderAppBar(); };
   const yes = document.getElementById('appbarYes');
   if (yes) yes.onclick = async () => { if (!installPrompt) return; installPrompt.prompt(); const r = await installPrompt.userChoice; installPrompt = null;
