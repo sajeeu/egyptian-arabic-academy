@@ -397,6 +397,8 @@ details .list{padding:0 0 10px}
 .pgw textarea.code{min-height:128px;border-color:var(--line-2);border-radius:14px;background:var(--bg);font-size:12.5px;line-height:1.6;overflow-wrap:anywhere;resize:vertical}
 .tint{padding:12px 14px;border-radius:14px;background:var(--bg);border:1px solid var(--line)}
 .tint>b{display:block;font-size:13px;font-weight:800} .tint p{margin:4px 0 0;font-size:14px;line-height:1.5;color:var(--ink-2)} .tint p b{color:var(--ink)}
+.ios-warn{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--sand-pale);color:var(--sand)}
+.ios-warn .ic{margin-top:2px;flex:none} .tint .ios-warn p{margin:0;font-size:13.5px;color:var(--ink-2)} .tint .ios-warn p b{color:var(--ink)}
 .howto{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px}
 .bk-list{display:flex;flex-direction:column;gap:8px}
 .bk-row{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;padding:12px 12px 12px 14px}
@@ -504,6 +506,7 @@ div.result{cursor:default;flex-wrap:wrap}
   </div>
 </header>
 <div class="wrap micbar" id="micbar" role="status" hidden></div>
+<div class="wrap micbar" id="appbar" role="status" hidden></div>
 <main class="wrap" id="app"></main>
 <footer class="foot"><button id="poweredBy" aria-expanded="false" onclick="this.setAttribute('aria-expanded','true');document.getElementById('contact').hidden=false">Powered by</button>
   <a id="contact" href="mailto:sajeeu@gmail.com" hidden>sajeeu@gmail.com</a></footer>
@@ -518,6 +521,9 @@ const byId = Object.fromEntries(CURRICULUM.map(l => [l.id, l]));
 const MODULE_NAMES = { 1: 'Greetings & Introductions', 2: 'Everyday Essentials', 3: 'Everyday Conversations', 4: 'Hospital Team Communication',
   5: 'Patient Interviews', 6: 'Examinations & Patient Care', 7: 'Clinical Communication', 8: 'Advanced Egyptian Conversations' };
 const label = id => id.replace('_', ' ');        // "M01_L01" -> "M01 L01"
+// iPhone or iPad (iPadOS reports itself as a Mac with a touch screen). Their Home Screen app keeps its own storage.
+const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+let installPrompt = null;                         // Chrome's install prompt, when it offers one
 const modTitle = ['', '', '', '', '', '', '', '', '']; // curriculum defines no module names, so none are shown
 
 function freshState(){ return { completed: [], lessons: {}, verified_spoken_passes: 0, mode: 'simplified_learner_confirmed' }; }
@@ -898,6 +904,7 @@ function show(view, id, opts = {}){
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || ((view === 'lesson' || view === 'overview') && b.dataset.v === 'dashboard')));
   $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
   ({ dashboard, lesson, overview, search, progress, finished }[view])(id, opts);
+  renderAppBar();                                               // the install / iPhone banner follows the current progress
   window.scrollTo(0, 0);
 }
 
@@ -1264,7 +1271,8 @@ function progress(_, opts){
           <div class="grow"><h2 id="a2hs-h">Add to Home Screen</h2><p class="pdesc">Put the academy on your phone's home screen. It then opens full screen, like an app.</p></div></div>
         <button class="btn primary" id="installBtn"${installPrompt ? '' : ' hidden'}>${ic('download', 'sm')}Add to Home Screen</button>
         <div class="howto">
-          <div class="tint"><b>iPhone or iPad</b><p>In Safari, tap the Share button, then <b>Add to Home Screen</b>.</p></div>
+          <div class="tint${isIOS ? ' first' : ''}"><b>iPhone or iPad</b><p>In Safari, tap the Share button, then <b>Add to Home Screen</b>.</p>
+            <div class="ios-warn">${ic('alert', 'sm')}<p><b>Important:</b> on iPhone and iPad the Home Screen icon keeps its own progress, separate from Safari. If you've already started in Safari, first tap <b>Save backup file</b> (in Daily backup on this page). Then open the new icon, go to Progress and tap <b>Load backup file</b>.</p></div></div>
           <div class="tint"><b>Android</b><p>In Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</p></div>
         </div>
       </section>
@@ -1280,8 +1288,6 @@ function progress(_, opts){
           <p class="pdesc" style="margin-top:8px;text-align:center">Opens Google AI Studio in a new tab. Sign in, tap <b>Create API key</b>, copy it, then come back and paste it below.</p></div>`}
         <div class="keyrow"><label class="sr" for="key">Google API key</label><input type="password" id="key" autocomplete="off" spellcheck="false" placeholder="${hasKey ? 'Enter a new key to replace the saved one' : 'Paste your Google API key'}">
           <button class="btn primary" id="saveKey" disabled>${ic('check', 'sm')}Save</button></div>
-        ${hasKey ? `<div><a class="btn ghost block" id="getKey" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">${ic('external', 'sm')}Get a new Google key</a>
-          <p class="pdesc" style="margin-top:8px;text-align:center">Opens Google AI Studio, where your keys are listed. Copy one and paste it above.</p></div>` : ''}
       </section>
 
       <section class="card pcard o4" aria-labelledby="move-h">
@@ -1399,10 +1405,31 @@ dailyBackup(); setInterval(dailyBackup, 60000);                     // catch up 
 document.addEventListener('visibilitychange', () => { if (!document.hidden) dailyBackup(); });
 
 /* Add to Home Screen: Android Chrome offers its own install prompt, which the Progress page can show. */
-let installPrompt = null;
-const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; const c = document.getElementById('installBtn'); if (c) c.hidden = false; });
-addEventListener('appinstalled', () => { installPrompt = null; const c = document.getElementById('installCard'); if (c) c.hidden = true; });
+function isInstalled(){ return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; const c = document.getElementById('installBtn'); if (c) c.hidden = false; renderAppBar(); });
+addEventListener('appinstalled', () => { installPrompt = null; const c = document.getElementById('installCard'); if (c) c.hidden = true; renderAppBar(); });
+
+/* A banner under the header, shown at most once per kind, and never once dismissed:
+   - Android phones and tablets: offer to install the app (uses Chrome's own install prompt).
+   - The iPhone/iPad Home Screen app with no progress yet: explain how to bring progress over from Safari. */
+function flagOff(k){ try { return localStorage.getItem(k) === '1'; } catch { return false; } }
+function setFlagOff(k){ try { localStorage.setItem(k, '1'); } catch {} }
+function renderAppBar(){
+  const bar = document.getElementById('appbar'); if (!bar) return;
+  const noProgress = !S.completed.length && !Object.keys(S.lessons).length;
+  let kind = null;
+  if (installPrompt && !isInstalled() && matchMedia('(pointer: coarse)').matches && !flagOff('eaa_install_banner_off')) kind = 'install';
+  else if (isIOS && isInstalled() && noProgress && !flagOff('eaa_ios_move_hint_off')) kind = 'iosmove';
+  bar.hidden = !kind; if (!kind) return (bar.innerHTML = '');
+  const close = `<button class="btn" id="appbarNo">${kind === 'install' ? 'Not now' : 'Got it'}</button>`;
+  bar.innerHTML = kind === 'install'
+    ? `<div class="note">${ic('phone')}<div><b>Install the academy as an app.</b> It gets its own icon and opens full screen.</div><button class="btn" id="appbarYes">${ic('download', 'sm')}Install</button>${close}</div>`
+    : `<div class="note">${ic('info')}<div><b>Started in Safari before?</b> Your progress there stays in Safari. To bring it here: in Safari, open Progress and tap <b>Save backup file</b>; then here, open Progress and tap <b>Load backup file</b>.</div>${close}</div>`;
+  document.getElementById('appbarNo').onclick = () => { setFlagOff(kind === 'install' ? 'eaa_install_banner_off' : 'eaa_ios_move_hint_off'); renderAppBar(); };
+  const yes = document.getElementById('appbarYes');
+  if (yes) yes.onclick = async () => { if (!installPrompt) return; installPrompt.prompt(); const r = await installPrompt.userChoice; installPrompt = null;
+    if (r?.outcome !== 'accepted') setFlagOff('eaa_install_banner_off'); renderAppBar(); };
+}
 
 /* ---------- Microphone permission ----------
    "Say it" and the voice tutor need the microphone. The app asks when it opens and shows a banner while it is off. */
