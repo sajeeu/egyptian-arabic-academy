@@ -6,21 +6,21 @@
 <title>Egyptian Arabic Academy</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
-  --bg:#f3f6f2; --surface:#ffffff; --sunk:#eaf0ea; --ink:#16211b; --muted:#5d6b63; --line:#dce4dd;
-  --green:#13804a; --green-hi:#0f6b3d; --on-green:#ffffff; --pale:#dff2e6; --pale-ink:#125c35;
-  --sand:#b7842f; --sand-pale:#f6ecd9; --danger:#b42318; --danger-pale:#fdecea;
+  --bg:#F3F6F2; --surface:#ffffff; --sunk:#EEF2EE; --ink:#10231A; --muted:#5E6F66; --ink-2:#46584E; --line:#DCE4DD; --line-2:#C6D2C9;
+  --green:#166B3F; --green-hi:#125A36; --on-green:#ffffff; --pale:#E4F1E8; --pale-ink:#125A36; --deep:#0F3D2A; --on-deep:#F1F7F2; --deep-soft:#A9CDB8;
+  --sand:#9A4A07; --sand-pale:#FCEFD9; --amber:#D17A12; --danger:#b42318; --danger-pale:#fdecea;
   --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --font-ar:"Cairo","Segoe UI","Noto Naskh Arabic","Geeza Pro",sans-serif;
   --r-lg:20px; --r:14px; --shadow:0 1px 2px rgba(20,40,30,.05),0 6px 20px rgba(20,40,30,.06);
 }
 @media (prefers-color-scheme: dark){
-  :root{ --bg:#0f1512; --surface:#18201b; --sunk:#131a16; --ink:#e8efe9; --muted:#9aa89f; --line:#27322b;
-    --green:#2aa765; --green-hi:#35b872; --on-green:#06140c; --pale:#183324; --pale-ink:#8fe2b2;
-    --sand:#d9ab5c; --sand-pale:#2c2416; --danger:#f08a80; --danger-pale:#3a1d1a;
+  :root{ --bg:#0f1512; --surface:#18201b; --sunk:#131a16; --ink:#e8efe9; --muted:#9aa89f; --ink-2:#b7c4bb; --line:#27322b; --line-2:#36443b;
+    --green:#2aa765; --green-hi:#35b872; --on-green:#06140c; --pale:#183324; --pale-ink:#8fe2b2; --deep:#0b2a1d; --on-deep:#eef6f0; --deep-soft:#8fbfa3;
+    --sand:#e2a85a; --sand-pale:#2c2416; --amber:#e2a85a; --danger:#f08a80; --danger-pale:#3a1d1a;
     --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark; }
 }
 *{box-sizing:border-box}
@@ -33,15 +33,17 @@ button,input,textarea{font:inherit;color:inherit}
 .ic.sm{width:16px;height:16px} .ic.lg{width:26px;height:26px}
 
 /* Top bar */
-.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.top-in{max-width:760px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left))}
-.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.01em;cursor:pointer;background:none;border:0;padding:0}
-.logo{width:36px;height:36px;border-radius:11px;background:var(--green);color:var(--on-green);display:grid;place-items:center}
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--surface) 88%,transparent);-webkit-backdrop-filter:saturate(1.6) blur(14px);backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--line)}
+.top-in{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left))}
+.brand{display:flex;align-items:center;gap:12px;font-size:15px;font-weight:800;letter-spacing:-.01em;cursor:pointer;background:none;border:0;padding:0}
+.logo{width:44px;height:44px;border-radius:13px;background:var(--green);color:var(--on-green);display:grid;place-items:center;flex:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 4px 10px -4px rgba(22,107,63,.6);transition:transform .22s cubic-bezier(.2,.7,.2,1)}
+.brand:hover .logo{transform:rotate(-6deg) scale(1.04)}
 .brand small{display:block;font-weight:500;font-size:12px;color:var(--muted);letter-spacing:0}
 nav{display:flex;gap:4px}
-nav button{display:flex;align-items:center;gap:7px;background:none;border:0;border-radius:12px;padding:8px 12px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer}
+nav button{display:flex;align-items:center;gap:8px;min-height:44px;background:none;border:0;border-radius:12px;padding:0 14px;font-size:14px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:background-color .16s,color .16s}
 nav button:hover{background:var(--sunk);color:var(--ink)}
-nav button.on{background:var(--pale);color:var(--pale-ink)}
+nav button.on,nav button.on:hover{background:var(--pale);color:var(--pale-ink)}
+.tab-ic{display:contents}
 
 .wrap{max-width:760px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:14px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow)}
@@ -84,26 +86,58 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .ring .bg{stroke:var(--sunk)} .ring .fg{stroke:var(--green);stroke-linecap:round;transform:rotate(-90deg);transform-origin:center}
 .ring text{font:700 13px var(--font);fill:var(--ink)}
 
-/* Continue learning: the curriculum lesson is always the main card, on top */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Home (redesign): two columns on wide screens; the curriculum lesson is always first */
 .h-sec{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin:4px 2px -2px}
-.hero{border:2px solid color-mix(in srgb,var(--green) 45%,var(--line));border-radius:24px;padding:22px}
-.sub{background:color-mix(in srgb,var(--pale) 45%,var(--surface));border:1.5px solid color-mix(in srgb,var(--green) 25%,var(--line));border-radius:24px;padding:20px;box-shadow:none}
-.lc-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.lc-pill{font-size:clamp(11px,3.1vw,12.5px);font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--pale);color:var(--pale-ink);padding:5px 11px;border-radius:99px;white-space:nowrap}
-.lc-code{font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
-.lc-title{font-size:26px;font-weight:800;line-height:1.2;margin:14px 0 8px}
-.lc-scen{color:var(--muted);margin:0}
-.lc-prog{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:18px}
-.hero .lc-prog b{font-size:18px}
-.sub .lc-prog{margin-top:14px} .sub .lc-prog b{font-weight:500}
-.conf{font-weight:700;color:var(--pale-ink);white-space:nowrap} .conf.zero{color:var(--muted);font-weight:500}
-.lc-bar{margin-top:10px}
-.lc-next{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;margin-top:14px;font-size:17px}
-.lc-next .ar{font-family:var(--font-ar);font-weight:600;direction:rtl}
+.wrap.wide{max-width:1200px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:36px}
+.col-a,.col-b{min-width:0;display:flex;flex-direction:column;gap:16px}
+@media (min-width:1000px){ .layout{grid-template-columns:400px minmax(0,1fr);gap:48px;align-items:start} .col-a.stick{position:sticky;top:92px} }
+.hd{margin:0;font-size:20px;font-weight:800;letter-spacing:-.015em;line-height:1.3}
+.hd-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.hd-count{font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.home .card{border-radius:22px;box-shadow:0 1px 2px rgba(16,35,26,.04),0 14px 34px -20px rgba(16,35,26,.2)}
+.hero{container:hero/inline-size;padding:0}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;padding:20px}
+@container hero (min-width:600px){
+  .hero-grid{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);grid-template-areas:"body phrase" "cta phrase";column-gap:28px;padding:24px}
+  .hero-body{grid-area:body} .pp{grid-area:phrase} .hero-cta{grid-area:cta;align-self:end}
+}
+.hero-body{display:flex;flex-direction:column;gap:18px}
+.lc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.lc-pill{display:inline-flex;align-items:center;min-height:26px;padding:0 10px;border-radius:99px;background:var(--pale);color:var(--pale-ink);font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.lc-code{font-size:12.5px;font-weight:700;letter-spacing:.03em;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lc-title{margin:10px 0 0;font-size:26px;font-weight:800;letter-spacing:-.025em;line-height:1.2;text-wrap:balance}
+.lc-scen{margin:10px 0 0;font-size:15px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
+.lc-prog{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px}
+.lc-prog b{font-weight:700}
+.conf{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--pale-ink);white-space:nowrap}
+.conf .ic{width:14px;height:14px;stroke-width:3;align-self:center}
+.conf.zero{color:var(--muted);font-weight:600}
+.segs{display:grid;gap:6px;margin-top:10px}
+.seg{height:8px;border-radius:99px;background:var(--line)}
+.seg.done{background:var(--green)}
+.seg.now{background:var(--pale);box-shadow:inset 0 0 0 2px var(--green)}
+.pp{display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-height:164px;padding:18px 20px 20px;border-radius:16px;background:var(--deep);color:var(--on-deep)}
+.pp-k{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--deep-soft)}
+.pp-ar{margin:0;font-family:"Noto Naskh Arabic",var(--font-ar);font-weight:700;line-height:1.5;text-align:left;color:#fff;overflow-wrap:anywhere}
+.pp-en{margin:2px 0 0;font-size:16px;font-weight:600;color:color-mix(in srgb,var(--on-deep) 85%,var(--deep-soft))}
+.home .btn.primary{min-height:52px;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 1px 2px rgba(14,74,48,.32),0 8px 18px -8px rgba(22,107,63,.55)}
+.home .btn.primary:hover{background:var(--green-hi)}
+.sub{padding:18px;display:flex;flex-direction:column;gap:12px}
 .sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-.sc-title{font-size:19px;font-weight:700;line-height:1.35}
-.sc-tag{font-size:14px;color:var(--muted);white-space:nowrap;padding-top:2px}
-.sc-meta{font-size:14px;color:var(--muted);margin-top:4px}
+.sc-title{font-size:16px;font-weight:700;line-height:1.35}
+.sc-tag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;padding-top:3px}
+.sc-meta{font-size:13px;color:var(--muted);margin-top:2px}
+.sub .segs{margin-top:8px}
+.sc-next{font-size:14px;color:var(--ink-2)} .sc-next .ar{font-family:"Noto Naskh Arabic",var(--font-ar);font-weight:700;font-size:20px;color:var(--ink)}
+.home .stats{gap:12px}
+.home .stat{flex-direction:column;align-items:flex-start;gap:12px;padding:14px;border-radius:18px;box-shadow:none}
+.home .stat .ico{width:32px;height:32px;border-radius:10px}
+.home .stat .ico .ic{width:18px;height:18px}
+.home .stat b{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.home .stat b small{font-size:14px;font-weight:700;letter-spacing:0;color:var(--muted)}
+.home .stat div>span{display:block;margin-top:2px;font-size:12.5px;font-weight:600;line-height:1.35;color:var(--ink-2)}
 .btn.round{border-radius:99px;margin-top:18px}
 
 /* Lesson overview */
@@ -127,20 +161,50 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .ov-ok{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--pale-ink);background:var(--pale);padding:3px 8px;border-radius:99px;flex:none;margin-top:6px}
 .btn.round-sm{border-radius:99px;padding:8px 14px}
 
-/* Modules */
-.mod-intro{color:var(--muted);margin:0 2px}
-.mod-tools{display:flex;gap:10px}
-.mod-tools input[type=text]{border-radius:99px;flex:1;min-width:0;padding-left:18px}
-.mod-tools .btn{border-radius:99px;flex:none}
-.mods{display:flex;flex-direction:column;gap:12px}
-.mod{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
-.mod summary{padding:14px 16px;gap:14px}
-.mod-num{width:54px;height:54px;border-radius:14px;background:var(--sunk);display:grid;place-items:center;font-size:18px;font-weight:800;flex:none;font-variant-numeric:tabular-nums}
-.mod-h{display:block;font-size:19px;font-weight:800;line-height:1.3}
-.mod-name{display:block;color:var(--muted);font-weight:500;line-height:1.35}
-.mod-count{display:block;font-size:13px;color:var(--muted);font-weight:500;margin-top:2px}
-.mod .list{padding:0 10px 10px}
-.view{font-size:13px;font-weight:700;color:var(--pale-ink);background:var(--pale);padding:4px 10px;border-radius:99px;flex:none}
+/* Modules (redesign) */
+.mod-intro{margin:6px 0 0;max-width:62ch;font-size:14px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
+.mod-tools{display:flex;flex-wrap:wrap;gap:10px}
+.msearch{flex:1 1 180px;min-width:0;display:flex;align-items:center;gap:10px;min-height:48px;padding:0 6px 0 14px;background:var(--surface);border:1px solid var(--line-2);border-radius:14px;color:var(--muted);transition:border-color .16s,box-shadow .16s,color .16s}
+.msearch:hover{border-color:#9FB2A6}
+.msearch:focus-within{border-color:var(--green);box-shadow:0 0 0 4px rgba(22,107,63,.16);color:var(--green)}
+.msearch input[type=text]{flex:1;min-width:0;height:46px;padding:0;border:0;border-radius:0;outline:0;box-shadow:none;background:transparent;font-size:16px;font-weight:500;color:var(--ink)}
+.msearch input::placeholder{color:var(--muted);opacity:1}
+.mclear{flex:none;display:grid;place-items:center;width:36px;height:36px;padding:0;border:0;border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}
+.mclear:hover{background:var(--sunk);color:var(--ink)}
+.mod-tools .btn{min-height:48px;padding:0 16px;font-size:14px;border-color:var(--line-2)}
+.mres{margin:0;font-size:13px;font-weight:600;color:var(--ink-2)}
+.mods{display:flex;flex-direction:column;gap:10px}
+.mod{background:var(--surface);border:1px solid var(--line);border-radius:18px;transition:border-color .18s,box-shadow .18s}
+.mod:hover{border-color:#C0CDC4;box-shadow:0 10px 24px -18px rgba(16,35,26,.28)}
+.mod[open]{border-color:#BFD6C6;box-shadow:0 1px 2px rgba(16,35,26,.04),0 16px 32px -22px rgba(16,35,26,.28)}
+.mod summary{padding:14px 14px 14px 16px;gap:14px;font-weight:400;border-radius:17px}
+.mod-num{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--sunk);color:var(--ink-2);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;transition:background-color .2s,color .2s}
+.mod.active .mod-num{background:var(--pale);color:var(--pale-ink)}
+.mod[open] .mod-num{background:var(--green);color:var(--on-green)}
+.mod-h{display:block;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.mod-name{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em;line-height:1.3;color:var(--ink)}
+.mod-count{display:block;font-size:13px;font-weight:500;line-height:1.4;color:var(--muted);font-variant-numeric:tabular-nums}
+.dots{display:flex;gap:4px;flex:none}
+.dot{width:14px;height:6px;border-radius:99px;background:var(--line)}
+.dot.p{background:#E08A1E} .dot.c{background:var(--green)}
+.mod .chev-box{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;color:var(--muted)}
+.mod summary:hover .chev-box{background:var(--sunk);color:var(--ink)}
+.mod .chev{transition:transform .3s cubic-bezier(.2,.7,.2,1)}
+.mod .list{margin:0 16px;padding:8px 0 10px;border-top:1px solid #E6ECE7}
+.mod .lesson-row{gap:12px;padding:8px;margin:0 -8px;width:calc(100% + 16px)}
+.mod .lesson-row:hover{background:var(--bg)}
+.st{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:#B4C2B9}
+.st .half,.st .tick{display:none}
+.st.p{color:var(--amber)} .st.p .half{display:block;fill:currentColor;stroke:none}
+.st.c{color:var(--green)} .st.c .ring{fill:currentColor} .st.c .tick{display:block;stroke:#fff}
+.l-meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--muted);font-variant-numeric:tabular-nums}
+.l-st.p{color:var(--sand)} .l-st.c{color:var(--pale-ink)}
+.l-title{display:block;font-size:15px;font-weight:600;line-height:1.35;color:var(--ink);overflow-wrap:anywhere}
+.view{flex:none;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--pale-ink);font-size:13px;font-weight:700}
+.lesson-row:hover .view{background:var(--pale);border-color:#BFD6C6}
+.view .ic{width:15px;height:15px}
+.mnone{display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px 24px;background:var(--surface);border:1px dashed var(--line-2);border-radius:18px;text-align:center}
+.mnone .ico{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--sunk);color:var(--ink-2)}
 summary{cursor:pointer;padding:14px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none;font-weight:700}
 summary::-webkit-details-marker{display:none}
 .mod-meta{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -211,9 +275,15 @@ textarea{min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:
 
 /* Phone: navigation moves to a bottom tab bar */
 @media (max-width:620px){
-  .top{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}  /* a blur here would trap the fixed tab bar inside the header */
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;justify-content:space-around;background:var(--surface);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom))}
-  nav button{flex-direction:column;gap:2px;font-size:11px;padding:6px 14px;flex:1}
+  .top{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}  /* a blur here would trap the fixed tab bar inside the header */
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--surface);border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom))}
+  nav button{flex-direction:column;justify-content:center;gap:3px;min-height:52px;font-size:12px;padding:0;color:var(--muted)}
+  nav button:hover,nav button.on,nav button.on:hover{background:none}
+  nav button.on{color:var(--pale-ink)}
+  .tab-ic{display:grid;place-items:center;width:56px;height:28px;border-radius:99px;transition:background-color .2s}
+  nav button:active .tab-ic{background:var(--sunk)}
+  nav button.on .tab-ic{background:var(--pale)}
+  .dots{display:none}
   .foot{padding-bottom:calc(92px + env(safe-area-inset-bottom))}   /* clears the bottom tab bar */
   .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
   .stats{grid-template-columns:1fr 1fr 1fr;gap:8px}
@@ -543,6 +613,11 @@ const ICONS = {
   alert: '<path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17v.01"/>',
   play: '<path d="M7 4v16l13-8z"/>',
   playCircle: '<circle cx="12" cy="12" r="9"/><path d="m10 8.5 5 3.5-5 3.5z"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  eye: '<path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0"/><circle cx="12" cy="12" r="3"/>',
+  xmark: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  expand: '<path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/>',
+  collapse: '<path d="m7 20 5-5 5 5"/><path d="m7 4 5 5 5-5"/>',
   external: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/>',
   chat: '<path d="M4 5h11v8H8.5L4 16.5z"/><path d="M15 9h5v8.5L16.5 15H10v-2"/>',
   spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/>',
@@ -575,6 +650,7 @@ const ring = (done, total, size = 64) => { const r = size / 2 - 5, c = 2 * Math.
 function show(view, id, opts = {}){
   stopTutor(); if ('speechSynthesis' in window) speechSynthesis.cancel();
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || ((view === 'lesson' || view === 'overview') && b.dataset.v === 'dashboard')));
+  $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
   ({ dashboard, lesson, overview, search, progress, finished }[view])(id, opts);
   window.scrollTo(0, 0);
 }
@@ -585,69 +661,116 @@ function dashboard(){
   const ps = status(p.id), pst = S.lessons[p.id];
   const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length;
   // Where a lesson stands: current expression, confirmed count and the next phrase (straight from the curriculum).
-  const pos = l => { const s = S.lessons[l.id], idx = s ? s.idx : 1, n = s ? s.confirmed.length : 0;
-    return { idx, n, ex: l.ex[idx - 1], conf: `<span class="conf${n ? '' : ' zero'}">${n} confirmed</span>` }; };
+  const pos = l => { const s = S.lessons[l.id], idx = s ? s.idx : 1, conf = s ? s.confirmed : [], n = conf.length;
+    return { idx, n, ex: l.ex[idx - 1],
+      conf: n ? `<span class="conf">${ic('check')}${n} confirmed</span>` : `<span class="conf zero">0 confirmed</span>`,
+      segs: `<div class="segs" role="img" aria-label="${n} of ${l.ex.length} expressions confirmed. You are on expression ${idx}." style="grid-template-columns:repeat(${l.ex.length},minmax(0,1fr))">` +
+        l.ex.map(e => `<span class="seg${conf.includes(e.n) ? ' done' : e.n === idx ? ' now' : ''}"></span>`).join('') + `</div>` }; };
   const scen = s => s.replace(/\s*\(context: [^)]*\)\s*$/, '');            // the context is shown separately
   const ctx = s => (s.match(/\(context: ([^)]*)\)\s*$/) || [])[1];
+  const code = id => label(id).replace(' ', ' · ');
   const pp = pos(p);
-  let h = `
-    <h2 class="h-sec">Continue learning</h2>
-    <div class="card hero">
-      <div class="lc-top"><span class="lc-pill">Primary curriculum lesson</span><span class="lc-code">${label(p.id).replace(' ', ' · ')}</span></div>
-      <h3 class="lc-title">${esc(p.title)}</h3>
-      <p class="lc-scen">${esc(scen(p.scenario))}</p>
-      <div class="lc-prog"><b>Expression ${pp.idx} of ${p.ex.length}</b>${pp.conf}</div>
-      <div class="bar lc-bar"><i style="width:${pp.n / p.ex.length * 100}%"></i></div>
-      <div class="lc-next">Next: <span class="ar">${esc(pp.ex.ar)}</span><span>· ${esc(pp.ex.en)}</span></div>
-      <button class="btn primary block lg round" onclick="startLesson('${p.id}');show('lesson','${p.id}')">${ic('playCircle')}${ps === 'in_progress' ? 'Resume Curriculum Lesson' : 'Start Curriculum Lesson'}</button>
-    </div>`;
+
+  // Left column: the curriculum lesson (always first), other lessons in progress, then the stats.
+  let a = `
+    <h2 class="hd">Continue learning</h2>
+    <article class="card hero"><div class="hero-grid">
+      <div class="hero-body">
+        <div>
+          <div class="lc-top"><span class="lc-pill">Primary curriculum lesson</span><span class="lc-code">${code(p.id)}</span></div>
+          <h3 class="lc-title">${esc(p.title)}</h3>
+          <p class="lc-scen">${esc(scen(p.scenario))}</p>
+        </div>
+        <div><div class="lc-prog"><b>Expression ${pp.idx} of ${p.ex.length}</b>${pp.conf}</div>${pp.segs}</div>
+      </div>
+      <div class="pp"><span class="pp-k">Next phrase</span>
+        <div><p class="pp-ar" lang="ar" dir="rtl" style="font-size:${pp.ex.ar.length > 18 ? 34 : 46}px">${esc(pp.ex.ar)}</p><p class="pp-en">${esc(pp.ex.en)}</p></div></div>
+      <div class="hero-cta"><button class="btn primary block lg" onclick="startLesson('${p.id}');show('lesson','${p.id}')">${ic('playCircle')}${ps === 'in_progress' ? 'Resume Curriculum Lesson' : 'Start Curriculum Lesson'}</button></div>
+    </div></article>`;
   const o = others();
   if (o.length){
-    h += `<h2 class="h-sec">Other lessons in progress</h2>` + o.map(l => { const lp = pos(l), c = ctx(l.scenario); return `
-      <div class="card sub">
-        <div class="sc-top"><div class="sc-title">${label(l.id)} — ${esc(l.title)}</div><span class="sc-tag">Secondary</span></div>
-        <div class="sc-meta">${esc(MODULE_NAMES[l.module])}${c ? ` · ${esc(c)}` : ''}</div>
-        <div class="lc-prog"><span>Expression ${lp.idx} of ${l.ex.length}</span>${lp.conf}</div>
-        <div class="lc-next">Next: <span class="ar">${esc(lp.ex.ar)}</span></div>
-        <button class="btn pale block lg round" onclick="show('lesson','${l.id}')">${ic('playCircle')}Resume Lesson</button>
-      </div>`; }).join('');
+    a += `<h2 class="hd" style="margin-top:8px">Other lessons in progress</h2>` + o.map(l => { const lp = pos(l), c = ctx(l.scenario); return `
+      <article class="card sub">
+        <div><div class="sc-top"><div class="sc-title">${label(l.id)} — ${esc(l.title)}</div><span class="sc-tag">Secondary</span></div>
+          <div class="sc-meta">${esc(MODULE_NAMES[l.module])}${c ? ` · ${esc(c)}` : ''}</div></div>
+        <div><div class="lc-prog"><span>Expression ${lp.idx} of ${l.ex.length}</span>${lp.conf}</div>${lp.segs}</div>
+        <div class="sc-next">Next: <span class="ar" lang="ar" dir="rtl">${esc(lp.ex.ar)}</span></div>
+        <button class="btn pale block lg" onclick="show('lesson','${l.id}')">${ic('playCircle')}Resume Lesson</button>
+      </article>`; }).join('');
   }
-  h += `
+  a += `
     <div class="stats">
-      <div class="stat"><span class="ico">${ic('cap')}</span><div><b>${done}<span class="muted" style="font-size:13px"> / 64</span></b><span>Lessons complete</span></div></div>
-      <div class="stat sand"><span class="ico">${ic('flame')}</span><div><b>${ip}</b><span>In progress</span></div></div>
+      <div class="stat"><span class="ico">${ic('cap')}</span><div><b>${done}<small> / 64</small></b><span>Lessons complete</span></div></div>
+      <div class="stat sand"><span class="ico">${ic('clock')}</span><div><b>${ip}</b><span>In progress</span></div></div>
       <div class="stat"><span class="ico">${ic('check')}</span><div><b>${confirmedCount()}</b><span>Phrases confirmed</span></div></div>
     </div>`;
-  h += `<h2 class="h-sec">All modules</h2>
-    <p class="mod-intro">All 64 lessons are included below with individual statuses. Expand or collapse modules, search by lesson title or ID, and select View to preview a lesson without changing progress.</p>
-    <div class="mod-tools"><input type="text" id="modq" placeholder="Search lesson titles or IDs…" autocomplete="off"><button class="btn ghost" id="expandAll">Expand all</button></div>
+
+  // Right column: every module and lesson, with search and expand/collapse.
+  const stCls = { complete: 'c', in_progress: 'p', not_started: 'n' }, stText = { complete: 'Complete', in_progress: 'In progress', not_started: 'Not started' };
+  const b = `
+    <div>
+      <div class="hd-row"><h2 class="hd">All modules</h2><span class="hd-count">8 modules · 64 lessons</span></div>
+      <p class="mod-intro">Every lesson is listed with its own status. Search by lesson title or ID, or select View to preview a lesson without changing your progress.</p>
+    </div>
+    <div class="mod-tools">
+      <div class="msearch" role="search">${ic('search')}<label class="sr" for="modq">Search lesson titles or IDs</label>
+        <input type="text" id="modq" inputmode="search" enterkeyhint="search" autocomplete="off" spellcheck="false" placeholder="Search lesson titles or IDs…">
+        <button class="mclear" id="modclear" aria-label="Clear search" hidden>${ic('xmark', 'sm')}</button></div>
+      <button class="btn ghost" id="expandAll"></button>
+    </div>
+    <p class="mres" id="modres" aria-live="polite" hidden></p>
     <div class="mods">` +
     [1,2,3,4,5,6,7,8].map(m => {
       const ls = CURRICULUM.filter(l => l.module === m), count = s => ls.filter(l => status(l.id) === s).length;
       const parts = [`${count('complete')}/8 complete`, count('in_progress') && `${count('in_progress')} in progress`, count('not_started') && `${count('not_started')} not started`].filter(Boolean);
       const mm = String(m).padStart(2, '0');
-      return `<details class="mod"><summary><span class="mod-num">${mm}</span>
-          <span class="grow"><span class="mod-h">Module ${mm}</span><span class="mod-name">${esc(MODULE_NAMES[m])}</span><span class="mod-count">${parts.join(' · ')}</span></span>${ic('chev', 'chev')}</summary><div class="list">` +
-        ls.map(l => `<button class="lesson-row" data-q="${esc((l.title + ' ' + l.id + ' ' + label(l.id)).toLowerCase())}" onclick="show('overview','${l.id}')">${statusIcon(l.id)}<span class="ln">L${String(l.lesson).padStart(2,'0')}</span><span class="grow">${esc(l.title)}</span>${pill(l.id)}<span class="view">View</span></button>`).join('') +
+      return `<details class="mod${count('complete') || count('in_progress') ? ' active' : ''}"><summary><span class="mod-num">${mm}</span>
+          <span class="grow"><span class="mod-h">Module ${mm}</span><span class="mod-name">${esc(MODULE_NAMES[m])}</span><span class="mod-count">${parts.join(' · ')}</span></span>
+          <span class="dots" aria-hidden="true">${ls.map(l => `<span class="dot ${stCls[status(l.id)]}"></span>`).join('')}</span>
+          <span class="chev-box">${ic('chev', 'chev')}</span></summary><div class="list">` +
+        ls.map(l => { const st = status(l.id); return `<button class="lesson-row" data-q="${esc(l.title.toLowerCase())}" data-k="${l.id.toLowerCase().replace('_', '')}" onclick="show('overview','${l.id}')">
+          <svg class="st ${stCls[st]}" viewBox="0 0 24 24" aria-hidden="true"><circle class="ring" cx="12" cy="12" r="9"/><path class="half" d="M12 3a9 9 0 0 1 0 18z"/><path class="tick" d="m8 12.5 2.8 2.8 5.4-5.7"/></svg>
+          <span class="grow"><span class="l-meta"><span>${code(l.id)}</span><span aria-hidden="true">·</span><span class="l-st ${stCls[st]}">${stText[st]}</span></span><span class="l-title">${esc(l.title)}</span></span>
+          <span class="view">${ic('eye')}View</span></button>`; }).join('') +
         `</div></details>`;
-    }).join('') + `</div><p class="muted small" id="modnone" hidden>No lessons match that search.</p>`;
-  $app.innerHTML = h;
+    }).join('') + `</div>
+    <div class="mnone" id="modnone" hidden><span class="ico">${ic('search')}</span>
+      <div><p style="margin:0;font-size:16px;font-weight:700;overflow-wrap:anywhere">No lessons match “<span id="modnoneq"></span>”</p>
+        <p style="margin:4px 0 0;font-size:14px;color:var(--ink-2)">Try part of a lesson title, or an ID such as M03 or L05.</p></div>
+      <button class="btn ghost" id="modnoneclear">Clear search</button></div>`;
+
+  $app.innerHTML = `<div class="layout home"><section class="col-a">${a}</section><section class="col-b">${b}</section></div>`;
+  const colA = $app.querySelector('.col-a');                       // on wide screens the left column stays in view, if it fits
+  if (colA.offsetHeight < innerHeight - 120) colA.classList.add('stick');
 
   // Module list: search filter and expand/collapse all
   const mods = [...$app.querySelectorAll('details.mod')], eb = document.getElementById('expandAll');
-  const syncBtn = () => { eb.textContent = mods.every(d => d.open) ? 'Collapse all' : 'Expand all'; };
+  const qIn = document.getElementById('modq');
+  const syncBtn = () => { const vis = mods.filter(d => !d.hidden), all = vis.length > 0 && vis.every(d => d.open);
+    eb.innerHTML = ic(all ? 'collapse' : 'expand', 'sm') + `<span>${all ? 'Collapse all' : 'Expand all'}</span>`; eb.disabled = !vis.length; };
   mods.forEach(d => d.addEventListener('toggle', syncBtn));
-  eb.onclick = () => { const open = !mods.every(d => d.open); mods.forEach(d => d.open = open); syncBtn(); };
-  document.getElementById('modq').oninput = e => {
-    const q = e.target.value.trim().toLowerCase().replace(/[_·]/g, ' ').replace(/\s+/g, ' ');
-    let any = false;
+  eb.onclick = () => { const vis = mods.filter(d => !d.hidden), open = !vis.every(d => d.open); vis.forEach(d => d.open = open); syncBtn(); };
+  const runSearch = () => {
+    const shown = qIn.value.trim(), q = shown.toLowerCase(), qn = q.replace(/[^a-z0-9]/g, '');
+    let lessons = 0, modsHit = 0;
     mods.forEach(d => {
       let hit = 0;
-      d.querySelectorAll('.lesson-row').forEach(r => { const ok = !q || r.dataset.q.replace(/_/g, ' ').includes(q); r.hidden = !ok; hit += ok; });
-      d.hidden = !hit; d.open = !!q && hit > 0; any ||= hit > 0;
+      d.querySelectorAll('.lesson-row').forEach(r => { const ok = !q || r.dataset.q.includes(q) || (!!qn && r.dataset.k.includes(qn)); r.hidden = !ok; hit += ok; });
+      d.hidden = !hit; d.open = !!q && hit > 0; lessons += hit; modsHit += hit > 0;
     });
-    document.getElementById('modnone').hidden = any; syncBtn();
+    document.getElementById('modclear').hidden = !qIn.value;
+    const res = document.getElementById('modres');
+    res.hidden = !q || !modsHit;
+    res.textContent = `Showing ${lessons} ${lessons === 1 ? 'lesson' : 'lessons'} in ${modsHit} ${modsHit === 1 ? 'module' : 'modules'} for “${shown}”`;
+    document.getElementById('modnone').hidden = !q || modsHit > 0;
+    document.getElementById('modnoneq').textContent = shown;
+    syncBtn();
   };
+  const clearSearch = () => { qIn.value = ''; runSearch(); qIn.focus(); };
+  qIn.oninput = runSearch;
+  document.getElementById('modclear').onclick = clearSearch;
+  document.getElementById('modnoneclear').onclick = clearSearch;
+  syncBtn();
 }
 
 function lessonHeader(L, extra = ''){
@@ -868,6 +991,7 @@ function progress(_, opts){
 }
 
 function finished(){
+  $app.classList.remove('wide');
   $app.innerHTML = `<div class="card" style="text-align:center;padding:36px 20px">
     <div class="logo" style="width:64px;height:64px;margin:0 auto 14px;border-radius:18px">${ic('cap', 'lg')}</div>
     <h1 class="title">Mabrouk! You finished all 64 lessons.</h1><p class="muted">All 8 modules complete. Revisit any lesson from Search to review it.</p>
@@ -876,7 +1000,7 @@ function finished(){
 
 document.getElementById('logoMark').innerHTML = ic('steth');
 const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], progress: ['chart', 'Progress'] };
-document.querySelectorAll('#nav button').forEach(b => { const [i, t] = NAV[b.dataset.v]; b.innerHTML = ic(i) + `<span>${t}</span>`; b.onclick = () => show(b.dataset.v); });
+document.querySelectorAll('#nav button').forEach(b => { const [i, t] = NAV[b.dataset.v]; b.innerHTML = `<span class="tab-ic">${ic(i)}</span><span>${t}</span>`; b.onclick = () => show(b.dataset.v); });
 show('dashboard');
 
 /* ---------- Microphone permission ----------
