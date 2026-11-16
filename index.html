@@ -480,6 +480,20 @@ div.result{cursor:default;flex-wrap:wrap}
 .foot a{color:var(--pale-ink);font-weight:700}
 
 /* Toast */
+/* Motion: each new page fades and rises in, and its cards follow in a short cascade (capped at ~0.5 s).
+   Re-rendering the same page (the next phrase card) only eases the main card. Reduced-motion turns all of this off. */
+@keyframes eaa-page{from{opacity:0}to{opacity:1}}
+@keyframes eaa-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes eaa-soft{from{opacity:.35;transform:translateY(6px)}to{opacity:1;transform:none}}
+#app.enter{animation:eaa-page .22s ease-out}
+#app.enter [data-anim]{animation:eaa-in .42s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:min(calc(var(--i) * 45ms),495ms)}
+#app.enter-soft :is(.phrase,.lprog,.hero,.pv-cont){animation:eaa-soft .28s cubic-bezier(.2,.7,.2,1) backwards}
+@keyframes eaa-toast{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
+.toast.pop{animation:eaa-toast .26s cubic-bezier(.2,.7,.2,1)}
+@keyframes eaa-modal{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes eaa-fade{from{opacity:0}to{opacity:1}}
+dialog.modal[open]{animation:eaa-modal .24s cubic-bezier(.2,.7,.2,1)}
+dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:50;width:max-content;max-width:min(calc(100vw - 32px),520px);background:var(--green);color:var(--on-green);padding:12px 16px;border-radius:14px;font-size:14px;font-weight:600;display:flex;gap:10px;align-items:flex-start;box-shadow:0 10px 30px -6px rgba(14,74,48,.45)}
 
 /* Phone: navigation moves to a bottom tab bar */
@@ -897,6 +911,7 @@ let toastTimer;
 function toast(text){
   const t = document.getElementById('toast');
   t.innerHTML = ic('info') + `<span>${text}</span>`; t.hidden = false;
+  t.classList.remove('pop'); void t.offsetWidth; t.classList.add('pop');     // replay the ease-in for each new message
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 6000);
 }
 
@@ -918,6 +933,23 @@ function show(view, id, opts = {}){
   ({ dashboard, lesson, overview, search, progress, finished }[view])(id, opts);
   renderAppBar();                                               // the install / iPhone banner follows the current progress
   window.scrollTo(0, 0);
+  animatePage(view, id);
+}
+
+// Page transition. A new page (or another lesson) gets the full entrance with its cards in a cascade;
+// redrawing the same page, such as moving to the next phrase card, gets only a light ease on the main card.
+let lastPage = '', animTimer = 0;
+function animatePage(view, id){
+  const key = view + '|' + (id || ''), same = key === lastPage; lastPage = key;
+  $app.classList.remove('enter', 'enter-soft'); void $app.offsetWidth;            // restart the animation
+  // Take the class off once it has played, so things shown later (search filtering, opened modules) don't replay it.
+  clearTimeout(animTimer); animTimer = setTimeout(() => $app.classList.remove('enter', 'enter-soft'), 1100);
+  if (same) return $app.classList.add('enter-soft');
+  const BLOCKS = '.card, .pstat, .stat, details.mod, .lintro, .pv-lh, .hd-row, .hd, .h-sec, .title, .ltitle';
+  [...$app.querySelectorAll(BLOCKS)]
+    .filter(el => !el.parentElement.closest(BLOCKS))                            // animate outer blocks, not the parts inside them
+    .forEach((el, i) => { el.setAttribute('data-anim', ''); el.style.setProperty('--i', i); });
+  $app.classList.add('enter');
 }
 
 function dashboard(){
