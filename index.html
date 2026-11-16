@@ -818,6 +818,7 @@ async function startTutor(L, ex){
     const m = JSON.parse(typeof e.data === 'string' ? e.data : await e.data.text());
     if (m.setupComplete){
       t.ready = true;
+      const cr = document.getElementById('composeRow'); if (cr) cr.hidden = false;   // typing works only while the conversation is live
       setStatus('<span class="live"></span> Live: just talk. The tutor will start.');
       ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: 'Hi! I am ready to practise.' }] }], turnComplete: true } }));
       return;
@@ -851,6 +852,7 @@ function tutorBtn(live){
 }
 function endTutorUI(keepLog){
   tutorBtn(false);
+  const cr = document.getElementById('composeRow'); if (cr) cr.hidden = true;      // the transcript stays; typing hides until the next conversation
   if (!keepLog){ const b = document.getElementById('tutorBox'); if (b) b.hidden = true; }
 }
 function stopTutor(){
@@ -1237,7 +1239,7 @@ function lesson(id, opts){
           <div id="tutorBox" hidden>
             <div class="log" id="log"></div>
             <div id="tstatus" class="tstatus"></div>
-            <div class="compose">
+            <div class="compose" id="composeRow" hidden>
               <input type="text" id="typed" placeholder="…or type a message" class="grow">
               <button class="btn ghost" id="send" aria-label="Send message">${ic('send')}</button>
             </div>
