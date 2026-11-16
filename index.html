@@ -397,6 +397,10 @@ details .list{padding:0 0 10px}
 .pgw .btn.danger{border-color:color-mix(in srgb,var(--danger) 35%,transparent)} .pgw .btn.danger:hover{background:var(--danger-pale)}
 .pgw .btn.push{margin-left:auto}
 .pgw .btn:disabled{opacity:.5;cursor:not-allowed}
+/* Save / Load backup file share one row, each taking half, even on a narrow phone */
+.pgw .row.pair{flex-wrap:nowrap}
+.pgw .row.pair>.btn{flex:1 1 0;min-width:0;padding:0 8px;gap:6px;font-size:clamp(12.5px,3.6cqw,14px)}
+@container page (max-width:310px){ .pgw .row.pair>.btn .ic{display:none} }   /* very small phones: text only */
 .keyrow{display:flex;flex-wrap:wrap;gap:10px}
 .keyrow input{flex:999 1 240px;min-width:0;height:48px;border-color:var(--line-2);border-radius:14px}
 .keyrow .btn{flex:1 0 auto;min-height:48px}
@@ -1409,7 +1413,7 @@ function progress(_, opts){
             return `<div class="tint bk-row"><div><b>Saved ${esc(when)}</b><span>${(b.state.completed || []).length}/64 lessons complete · ${bp} ${bp === 1 ? 'phrase' : 'phrases'} confirmed</span></div>
               <button class="btn ghost again" data-bk="${i}">${ic('retry', 'sm')}Restore</button></div>`; }).join('') + `</div>`
           : `<p class="pdesc">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`}
-        <div class="row">
+        <div class="row pair">
           <button class="btn pale" id="saveFile">${ic('download', 'sm')}Save backup file</button>
           <label class="btn ghost" for="loadFile">${ic('upload', 'sm')}Load backup file</label>
           <input type="file" id="loadFile" accept=".txt,text/plain" hidden>
