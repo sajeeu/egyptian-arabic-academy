@@ -135,6 +135,11 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
 .sc-title{font-size:16px;font-weight:700;line-height:1.35}
 .sc-tag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;padding-top:3px}
+.sc-right{display:flex;align-items:flex-start;gap:4px;flex:none}
+.sc-x{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:36px;height:36px;margin:-8px -8px 0 0;padding:0 8px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.sc-x:hover{background:var(--sunk);color:var(--ink)}
+.sc-x.armed,.sc-x.armed:hover{background:var(--danger-pale);color:var(--danger)}
+.sc-right:has(.sc-x.armed) .sc-tag{display:none}
 .sc-meta{font-size:13px;color:var(--muted);margin-top:2px}
 .sub .segs{margin-top:8px}
 .sc-next{font-size:14px;color:var(--ink-2)} .sc-next .ar{font-family:"Noto Naskh Arabic",var(--font-ar);font-weight:700;font-size:20px;color:var(--ink)}
@@ -548,6 +553,7 @@ function repair(st){
     st.lessons[id] = { ...x, confirmed, idx: Math.min(Math.max(Number.isInteger(x.idx) ? x.idx : 1, 1), n) };
   }
   if (!Object.keys(st.retired).length) delete st.retired;
+  if ('dismissed' in st) st.dismissed = Array.isArray(st.dismissed) ? st.dismissed.filter(i => byId[i]) : [];   // Home cards she removed
   return st;
 }
 function save(){ S.last_updated = new Date().toISOString(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
@@ -946,11 +952,12 @@ function dashboard(){
         <div><p class="pp-ar" lang="ar" dir="rtl" style="font-size:${pp.ex.ar.length > 18 ? 34 : 46}px">${esc(pp.ex.ar)}</p><p class="pp-en">${esc(pp.ex.en)}</p></div></div>
       <div class="hero-cta"><button class="btn primary block lg" onclick="startLesson('${p.id}');show('lesson','${p.id}')">${ic('playCircle')}${ps === 'in_progress' ? 'Resume Curriculum Lesson' : 'Start Curriculum Lesson'}</button></div>
     </div></article>`;
-  const o = others();
+  const o = others().filter(l => !(S.dismissed || []).includes(l.id));    // cards she removed from Home stay hidden
   if (o.length){
     a += `<h2 class="hd" style="margin-top:8px">Other lessons in progress</h2>` + o.map(l => { const lp = pos(l), c = ctx(l.scenario); return `
       <article class="card sub">
-        <div><div class="sc-top"><div class="sc-title">${label(l.id)} — ${esc(l.title)}</div><span class="sc-tag">Secondary</span></div>
+        <div><div class="sc-top"><div class="sc-title">${label(l.id)} — ${esc(l.title)}</div><span class="sc-right"><span class="sc-tag">Secondary</span>
+          <button type="button" class="sc-x" data-dismiss="${l.id}" aria-label="Remove ${label(l.id)} from Home">${ic('xmark', 'sm')}</button></span></div>
           <div class="sc-meta">${esc(MODULE_NAMES[l.module])}${c ? ` · ${esc(c)}` : ''}</div></div>
         <div><div class="lc-prog"><span>Expression ${lp.idx} of ${l.ex.length}</span>${lp.conf}</div>${lp.segs}</div>
         <div class="sc-next">Next: <span class="ar" lang="ar" dir="rtl">${esc(lp.ex.ar)}</span></div>
@@ -999,6 +1006,18 @@ function dashboard(){
       <button class="btn ghost" id="modnoneclear">Clear search</button></div>`;
 
   $app.innerHTML = `<div class="layout home"><section class="col-a">${a}</section><section class="col-b">${b}</section></div>`;
+  // X on a secondary card: the first tap asks "Tap again to remove", the second (within 4 s) hides the card from Home.
+  // Only the card is hidden: the lesson keeps its progress and stays "In progress" in All modules.
+  $app.querySelectorAll('[data-dismiss]').forEach(b => b.onclick = () => {
+    const id = b.dataset.dismiss;
+    if (!b.classList.contains('armed')){
+      b.classList.add('armed'); b.innerHTML = `${ic('xmark', 'sm')}<span>Tap again to remove</span>`; b.setAttribute('aria-label', `Tap again to remove ${label(id)} from Home`);
+      clearTimeout(b._t); b._t = setTimeout(() => { if (b.isConnected){ b.classList.remove('armed'); b.innerHTML = ic('xmark', 'sm'); b.setAttribute('aria-label', `Remove ${label(id)} from Home`); } }, 4000);
+      return;
+    }
+    S.dismissed = [...new Set([...(S.dismissed || []), id])]; save(); show('dashboard');
+    toast(`${label(id)} removed from Home. Its progress is kept: open it from All modules to continue.`);
+  });
   const colA = $app.querySelector('.col-a');                       // on wide screens the left column stays in view, if it fits
   if (colA.offsetHeight < innerHeight - 120) colA.classList.add('stick');
 
@@ -1138,6 +1157,7 @@ function lesson(id, opts){
 
   const s = S.lessons[id], ex = L.ex[s.idx - 1], last = s.idx === L.ex.length;
   const n = L.ex.length;
+  if (S.dismissed?.includes(id)){ S.dismissed = S.dismissed.filter(x => x !== id); save(); }   // opened again: its Home card returns
   $app.classList.add('wide');                       // the lesson uses the wider page, like Home
   $app.innerHTML = `<div class="lesson">
     ${opts.justFinished ? finishNote(opts.justFinished) : ''}
