@@ -136,7 +136,7 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .sc-title{font-size:16px;font-weight:700;line-height:1.35}
 .sc-tag{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;padding-top:3px}
 .sc-right{display:flex;align-items:flex-start;gap:4px;flex:none}
-.sc-x{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:36px;height:36px;margin:-8px -8px 0 0;padding:0 8px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.sc-x{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:44px;height:44px;margin:-12px -12px -8px 0;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
 .sc-x:hover{background:var(--sunk);color:var(--ink)}
 .sc-x.armed,.sc-x.armed:hover{background:var(--danger-pale);color:var(--danger)}
 .sc-right:has(.sc-x.armed) .sc-tag{display:none}
@@ -177,7 +177,7 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .mod-intro{margin:6px 0 0;max-width:62ch;font-size:14px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
 .mod-tools{display:flex;flex-wrap:wrap;gap:10px}
 .msearch{flex:1 1 180px;min-width:0;display:flex;align-items:center;gap:10px;min-height:48px;padding:0 6px 0 14px;background:var(--surface);border:1px solid var(--line-2);border-radius:14px;color:var(--muted);transition:border-color .16s,box-shadow .16s,color .16s}
-.msearch:hover{border-color:#9FB2A6}
+.msearch:hover{border-color:color-mix(in srgb,var(--line-2) 60%,var(--muted))}
 .msearch:focus-within{border-color:var(--green);box-shadow:0 0 0 4px rgba(22,107,63,.16);color:var(--green)}
 .msearch input[type=text]{flex:1;min-width:0;height:46px;padding:0;border:0;border-radius:0;outline:0;box-shadow:none;background:transparent;font-size:16px;font-weight:500;color:var(--ink)}
 .msearch input::placeholder{color:var(--muted);opacity:1}
@@ -187,8 +187,8 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .mres{margin:0;font-size:13px;font-weight:600;color:var(--ink-2)}
 .mods{display:flex;flex-direction:column;gap:10px}
 .mod{background:var(--surface);border:1px solid var(--line);border-radius:18px;transition:border-color .18s,box-shadow .18s}
-.mod:hover{border-color:#C0CDC4;box-shadow:0 10px 24px -18px rgba(16,35,26,.28)}
-.mod[open]{border-color:#BFD6C6;box-shadow:0 1px 2px rgba(16,35,26,.04),0 16px 32px -22px rgba(16,35,26,.28)}
+.mod:hover{border-color:var(--line-2);box-shadow:0 10px 24px -18px rgba(16,35,26,.28)}
+.mod[open]{border-color:color-mix(in srgb,var(--green) 18%,var(--line));box-shadow:0 1px 2px rgba(16,35,26,.04),0 16px 32px -22px rgba(16,35,26,.28)}
 .mod summary{padding:14px 14px 14px 16px;gap:14px;font-weight:400;border-radius:17px}
 .mod-num{flex:none;display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--sunk);color:var(--ink-2);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;transition:background-color .2s,color .2s}
 .mod.active .mod-num{background:var(--pale);color:var(--pale-ink)}
@@ -215,10 +215,10 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .mod .chev-box{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;color:var(--muted)}
 .mod summary:hover .chev-box{background:var(--sunk);color:var(--ink)}
 .mod .chev{transition:transform .3s cubic-bezier(.2,.7,.2,1)}
-.mod .list{margin:0 16px;padding:8px 0 10px;border-top:1px solid #E6ECE7}
+.mod .list{margin:0 16px;padding:8px 0 10px;border-top:1px solid var(--line)}
 .mod .lesson-row{gap:12px;padding:8px;margin:0 -8px;width:calc(100% + 16px)}
 .mod .lesson-row:hover{background:var(--bg)}
-.st{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:#B4C2B9}
+.st{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:var(--line-2)}
 .st .half,.st .tick{display:none}
 .st.p{color:var(--amber)} .st.p .half{display:block;fill:currentColor;stroke:none}
 .st.c{color:var(--green)} .st.c .ring{fill:currentColor} .st.c .tick{display:block;stroke:#fff}
@@ -226,7 +226,7 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .l-st.p{color:var(--sand)} .l-st.c{color:var(--pale-ink)}
 .l-title{display:block;font-size:15px;font-weight:600;line-height:1.35;color:var(--ink);overflow-wrap:anywhere}
 .view{flex:none;display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--pale-ink);font-size:13px;font-weight:700}
-.lesson-row:hover .view{background:var(--pale);border-color:#BFD6C6}
+.lesson-row:hover .view{background:var(--pale);border-color:color-mix(in srgb,var(--green) 18%,var(--line))}
 .view .ic{width:15px;height:15px}
 .mnone{display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px 24px;background:var(--surface);border:1px dashed var(--line-2);border-radius:18px;text-align:center}
 .mnone .ico{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--sunk);color:var(--ink-2)}
@@ -267,7 +267,8 @@ details .list{padding:0 0 10px}
 .lintro{display:flex;flex-direction:column;gap:20px}
 .lesson .card{border-radius:22px;box-shadow:0 1px 2px rgba(16,35,26,.04),0 14px 34px -20px rgba(16,35,26,.2)}
 .stage{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
-@container lesson (min-width:960px){ .stage{grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:stretch} }
+.side .actions{order:-1}   /* one column (phone, tablet): the Complete buttons come straight after the phrase, before the tutor */
+@container lesson (min-width:960px){ .stage{grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:stretch} .side .actions{order:0} }
 .phrase{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:clamp(28px,4.5cqw,44px) clamp(20px,4cqw,40px);text-align:center}
 .phrase-text{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:100%}
 .phrase .badge{margin:0;min-height:26px;padding:0 12px;font-size:11px;font-weight:800;letter-spacing:.08em}
@@ -311,7 +312,7 @@ details .list{padding:0 0 10px}
 .pvw .card,.pgw .card{border-radius:22px;box-shadow:0 1px 2px rgba(16,35,26,.04),0 14px 34px -20px rgba(16,35,26,.2)}
 .pv-mod{margin:0;font-size:15px;font-weight:500;color:var(--muted)}
 .pvw .lhead{gap:4px}
-.pv{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"scn" "list" "cont";gap:28px}
+.pv{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"scn" "cont" "list";gap:20px}   /* one column: Start / Resume sits above the list */
 .pv-scn{grid-area:scn;min-width:0} .pv-list{grid-area:list;min-width:0} .pv-cont{grid-area:cont;min-width:0}
 @container page (min-width:1000px){ .pv{grid-template-columns:400px minmax(0,1fr);grid-template-areas:"scn list" "cont list";grid-template-rows:auto 1fr;gap:20px 48px} .pv-cont{align-self:start} }
 .pv-scn,.pv-cont{display:flex;flex-direction:column;gap:16px;padding:20px}
@@ -400,6 +401,14 @@ details .list{padding:0 0 10px}
 .keyrow input{flex:999 1 240px;min-width:0;height:48px;border-color:var(--line-2);border-radius:14px}
 .keyrow .btn{flex:1 0 auto;min-height:48px}
 .pgw textarea.code{min-height:128px;border-color:var(--line-2);border-radius:14px;background:var(--bg);font-size:12.5px;line-height:1.6;overflow-wrap:anywhere;resize:vertical}
+/* "Show progress text": the raw text is tucked away until asked for */
+.adv{border:1px solid var(--line);border-radius:14px;background:var(--bg)}
+.adv summary{justify-content:flex-start;gap:8px;min-height:44px;padding:0 14px;font-size:14px;color:var(--pale-ink)}
+.adv .chev{width:16px;height:16px} .adv[open] .chev{transform:rotate(180deg)}
+.adv-in{display:flex;flex-direction:column;gap:12px;padding:0 12px 12px}
+.pgw .adv textarea.code{background:var(--surface)}
+.reset-row{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)}
+.reset-row .pdesc{margin:0;flex:1 1 200px}
 .tint{padding:12px 14px;border-radius:14px;background:var(--bg);border:1px solid var(--line)}
 .tint>b{display:block;font-size:13px;font-weight:800} .tint p{margin:4px 0 0;font-size:14px;line-height:1.5;color:var(--ink-2)} .tint p b{color:var(--ink)}
 .ios-warn{display:flex;gap:8px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--sand-pale);color:var(--sand)}
@@ -935,7 +944,10 @@ function show(view, id, opts = {}){
   $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
   ({ dashboard, lesson, overview, search, progress, finished }[view])(id, opts);
   renderAppBar();                                               // the install / iPhone banner follows the current progress
-  window.scrollTo(0, 0);
+  // Next card of the same lesson, in the one-column layout: open at the "Phrase x of y" line, so the phrase and the
+  // Complete buttons are on screen without scrolling. Everything else opens at the top.
+  const lp = view === 'lesson' && lastPage === view + '|' + (id || '') && !matchMedia('(min-width:1000px)').matches && $app.querySelector('.lprog');
+  window.scrollTo(0, lp ? Math.max(0, lp.getBoundingClientRect().top + scrollY - document.querySelector('.top').offsetHeight - 12) : 0);
   animatePage(view, id);
 }
 
@@ -964,7 +976,7 @@ function dashboard(){
   const pos = l => { const s = S.lessons[l.id], idx = s ? s.idx : 1, conf = s ? s.confirmed : [], n = conf.length;
     return { idx, n, ex: l.ex[idx - 1],
       conf: n ? `<span class="conf">${ic('check')}${n} confirmed</span>` : `<span class="conf zero">0 confirmed</span>`,
-      segs: `<div class="segs" role="img" aria-label="${n} of ${l.ex.length} expressions confirmed. You are on expression ${idx}." style="grid-template-columns:repeat(${l.ex.length},minmax(0,1fr))">` +
+      segs: `<div class="segs" role="img" aria-label="${n} of ${l.ex.length} phrases confirmed. You are on phrase ${idx}." style="grid-template-columns:repeat(${l.ex.length},minmax(0,1fr))">` +
         l.ex.map(e => `<span class="seg${conf.includes(e.n) ? ' done' : e.n === idx ? ' now' : ''}"></span>`).join('') + `</div>` }; };
   const scen = s => s.replace(/\s*\(context: [^)]*\)\s*$/, '');            // the context is shown separately
   const ctx = s => (s.match(/\(context: ([^)]*)\)\s*$/) || [])[1];
@@ -981,7 +993,7 @@ function dashboard(){
           <h3 class="lc-title">${esc(p.title)}</h3>
           <p class="lc-scen">${esc(scen(p.scenario))}</p>
         </div>
-        <div><div class="lc-prog"><b>Expression ${pp.idx} of ${p.ex.length}</b>${pp.conf}</div>${pp.segs}</div>
+        <div><div class="lc-prog"><b>Phrase ${pp.idx} of ${p.ex.length}</b>${pp.conf}</div>${pp.segs}</div>
       </div>
       <div class="pp"><span class="pp-k">Next phrase</span>
         <div><p class="pp-ar" lang="ar" dir="rtl" style="font-size:${pp.ex.ar.length > 18 ? 34 : 46}px">${esc(pp.ex.ar)}</p><p class="pp-en">${esc(pp.ex.en)}</p></div></div>
@@ -994,7 +1006,7 @@ function dashboard(){
         <div><div class="sc-top"><div class="sc-title">${label(l.id)} — ${esc(l.title)}</div><span class="sc-right"><span class="sc-tag">Secondary</span>
           <button type="button" class="sc-x" data-dismiss="${l.id}" aria-label="Remove ${label(l.id)} from Home">${ic('xmark', 'sm')}</button></span></div>
           <div class="sc-meta">${esc(MODULE_NAMES[l.module])}${c ? ` · ${esc(c)}` : ''}</div></div>
-        <div><div class="lc-prog"><span>Expression ${lp.idx} of ${l.ex.length}</span>${lp.conf}</div>${lp.segs}</div>
+        <div><div class="lc-prog"><span>Phrase ${lp.idx} of ${l.ex.length}</span>${lp.conf}</div>${lp.segs}</div>
         <div class="sc-next">Next: <span class="ar" lang="ar" dir="rtl">${esc(lp.ex.ar)}</span></div>
         <button class="btn pale block lg" onclick="show('lesson','${l.id}')">${ic('playCircle')}Resume Lesson</button>
       </article>`; }).join('');
@@ -1114,7 +1126,7 @@ function overview(id){
   const stLabel = { not_started: 'Not Started', in_progress: 'In Progress', complete: 'Complete' }[st];
   const n = L.ex.length;
   const conf = s ? s.confirmed : [], cur = st === 'in_progress' ? s.idx : 0;
-  const segs = `<div class="segs" role="img" aria-label="${conf.length} of ${n} expressions confirmed.${cur ? ` You are on expression ${cur}.` : ''}" style="grid-template-columns:repeat(${n},minmax(0,1fr))">` +
+  const segs = `<div class="segs" role="img" aria-label="${conf.length} of ${n} phrases confirmed.${cur ? ` You are on phrase ${cur}.` : ''}" style="grid-template-columns:repeat(${n},minmax(0,1fr))">` +
     L.ex.map(e => `<span class="seg${conf.includes(e.n) ? ' done' : e.n === cur ? ' now' : ''}"></span>`).join('') + `</div>`;
   const back = `<button class="btn ghost block back" onclick="show('dashboard')">${ic('left', 'sm')}Back to Dashboard</button>`;
   let next;
@@ -1123,14 +1135,14 @@ function overview(id){
     const role = p === L ? `<b>${code} is your primary curriculum lesson.</b>`
       : `It becomes your ${ORDINAL[ip - 1] || 'number ' + ip} in-progress lesson. <b>${label(p.id)} stays the primary curriculum lesson.</b>`;
     next = `<div class="pv-ch"><h2 id="cont-h">Start this lesson</h2>
-      <p>Selecting <b>Start Lesson</b> begins ${code} at expression 1/${n}, with no expressions confirmed. ${role}</p></div>
+      <p><b>Start Lesson</b> begins ${code} at phrase 1 of ${n}, with nothing confirmed yet. ${role}</p></div>
       <div class="pv-btns"><button class="btn primary block go-btn" id="ovGo" onclick="startLesson('${id}');show('lesson','${id}')">${ic('playCircle')}Start Lesson</button>${back}</div>`;
   } else if (st === 'in_progress'){
     next = `<div class="pv-ch"><h2 id="cont-h">Continue this lesson</h2>${segs}
-      <p>You're on expression ${s.idx}/${n}, with ${s.confirmed.length} confirmed. ${p === L ? `<b>This is your primary curriculum lesson.</b>` : `<b>${label(p.id)} stays the primary curriculum lesson.</b>`}</p></div>
+      <p>You're on phrase ${s.idx} of ${n}, with ${s.confirmed.length} confirmed. ${p === L ? `<b>This is your primary curriculum lesson.</b>` : `<b>${label(p.id)} stays the primary curriculum lesson.</b>`}</p></div>
       <div class="pv-btns"><button class="btn ${p === L ? 'primary' : 'pale'} block go-btn" id="ovGo" onclick="show('lesson','${id}')">${ic('playCircle')}${p === L ? 'Resume Curriculum Lesson' : 'Resume Lesson'}</button>${back}</div>`;
   } else {
-    next = `<div class="pv-ch"><h2 id="cont-h">Lesson complete</h2>${segs}<p>You confirmed all ${n} expressions. Tap any expression to hear it again.</p></div>
+    next = `<div class="pv-ch"><h2 id="cont-h">Lesson complete</h2>${segs}<p>You confirmed all ${n} phrases. Tap any phrase to hear it again.</p></div>
       <div class="pv-btns">${back}</div>`;
   }
   const scen = L.scenario.replace(/\s*\(context: [^)]*\)\s*$/, ''), ctx = (L.scenario.match(/\(context: ([^)]*)\)\s*$/) || [])[1];
@@ -1143,18 +1155,18 @@ function overview(id){
     <div class="pv">
       <section class="card pv-scn" aria-labelledby="scn-h">
         <div class="pv-scn-top">
-          <div class="pv-h"><span class="pv-ico">${ic('chat', 'sm')}</span><h2 id="scn-h">Exact curriculum scenario</h2></div>
+          <div class="pv-h"><span class="pv-ico">${ic('chat', 'sm')}</span><h2 id="scn-h">Scenario</h2></div>
           <p class="pv-scen">${esc(scen)}</p>${ctx ? `<span class="ctx-chip">Context: ${esc(ctx)}</span>` : ''}
         </div>
         <div class="pv-stats">
-          <div><span>Authored expressions</span><b>${n}</b></div>
+          <div><span>Phrases</span><b>${n}</b></div>
           <div><span>Lesson status</span><span class="st-pill ${st}"><i aria-hidden="true"></i>${stLabel}</span></div>
         </div>
       </section>
       <section class="pv-list" aria-labelledby="exprs-h">
         <div class="pv-lh">
-          <div class="between wrap-row"><h2 id="exprs-h">All ${n} expressions</h2><span class="ctx-chip">${ic('eye', 'sm')}Preview only</span></div>
-          <p>Exact Arabic, English and Latin cues, in the authored curriculum order. ${st === 'not_started' ? 'No expression is confirmed yet' : 'Viewing this does not change your progress'}. Tap one to hear it.</p>
+          <div class="between wrap-row"><h2 id="exprs-h">All ${n} phrases</h2><span class="ctx-chip">${ic('eye', 'sm')}Preview only</span></div>
+          <p>The Arabic, pronunciation and English for each phrase, in lesson order. Looking at this page doesn't change your progress. Tap a phrase to hear it.</p>
         </div>
         <div class="card exprs-card"><ol class="exprs">` +
           L.ex.map(e => { const done = conf.includes(e.n), now = !done && e.n === cur;
@@ -1345,7 +1357,7 @@ function progress(_, opts){
       <section class="card pcard o2" aria-labelledby="mods-h">
         <div class="between wrap-row"><h2 id="mods-h">Modules</h2><span class="conf">${ic('check')}${ph} ${ph === 1 ? 'phrase' : 'phrases'} confirmed</span></div>
         <div>${modRows}</div>
-        <div class="pfoot">${ic('info', 'sm')}<p>Completion is your own confirmation (simplified learner-confirmed mode). Verified spoken passes: 0.</p></div>
+        <div class="pfoot">${ic('info', 'sm')}<p>A phrase counts as complete when you confirm it yourself. The app doesn't score your pronunciation.</p></div>
       </section>
 
       <section class="card pcard o6" id="installCard" aria-labelledby="a2hs-h"${isInstalled() ? ' hidden' : ''}>
@@ -1372,19 +1384,24 @@ function progress(_, opts){
           <button class="btn primary" id="saveKey" disabled>${ic('check', 'sm')}Save</button></div>
       </section>
 
-      <section class="card pcard o4" aria-labelledby="move-h">
-        <div><h2 id="move-h">Move to another device</h2><p class="pdesc">Your progress saves automatically in this browser. To move it, copy this text and paste it on the other device.</p></div>
-        <label class="sr" for="state">Progress text</label>
-        <textarea id="state" class="code" spellcheck="false" autocomplete="off">ACADEMY_STATE_V9\n${esc(JSON.stringify(S))}</textarea>
-        <div class="row">
-          <button class="btn pale" id="copyState">${ic('copy', 'sm')}Copy</button>
-          <button class="btn ghost" id="importState">${ic('upload', 'sm')}Load pasted progress</button>
-          <button class="btn danger push" id="reset">${ic('trash', 'sm')}Start over</button>
-        </div>
-        <div id="stateMsg"></div>
+      <section class="card pcard o5" aria-labelledby="move-h">
+        <div><h2 id="move-h">Move to another device</h2><p class="pdesc">Your progress saves automatically in this browser. The easiest way to move it is <b>Save backup file</b> here, then <b>Load backup file</b> on the other device. You can also copy it as text.</p></div>
+        <details class="adv" id="stateBox"><summary>${ic('chev', 'chev')}<span>Show progress text</span></summary>
+          <div class="adv-in">
+            <label class="sr" for="state">Progress text</label>
+            <textarea id="state" class="code" spellcheck="false" autocomplete="off">ACADEMY_STATE_V9\n${esc(JSON.stringify(S))}</textarea>
+            <div class="row">
+              <button class="btn pale" id="copyState">${ic('copy', 'sm')}Copy</button>
+              <button class="btn ghost" id="importState">${ic('upload', 'sm')}Load pasted progress</button>
+            </div>
+            <div id="stateMsg"></div>
+          </div>
+        </details>
+        <div class="reset-row"><p class="pdesc">Start again from lesson 1. This erases all progress in this browser.</p>
+          <button class="btn danger" id="reset">${ic('trash', 'sm')}Start over</button></div>
       </section>
 
-      <section class="card pcard o5" id="backupCard" aria-labelledby="backup-h">
+      <section class="card pcard o4" id="backupCard" aria-labelledby="backup-h">
         <div><h2 id="backup-h">Daily backup</h2><p class="pdesc">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so now and then save a backup file too.</p></div>
         ${backups().length ? `<div class="bk-list">` + backups().map((b, i) => { const t = new Date(b.at);      // when the copy was actually made
             const when = t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5);
@@ -1519,14 +1536,23 @@ let micState = 'prompt';   // granted | prompt | denied | nomic | unsupported
 function renderMicBar(){
   const bar = document.getElementById('micbar');
   const btn = label => `<button class="btn" onclick="requestMic()">${ic('mic', 'sm')}${label}</button>`;
-  const html = {
+  // How to unblock depends on where the app runs: the installed app has no address bar.
+  const unblock = !isInstalled() ? `tap the lock or <b>ⓘ</b> icon next to the web address, set <b>Microphone</b> to <b>Allow</b>, then reload the page.`
+    : isIOS ? `open your phone's <b>Settings</b>, find <b>Safari</b>, then <b>Microphone</b>, and choose <b>Allow</b>. Then reopen the academy.`
+    : `press and hold the academy's icon, tap <b>App info</b> (ⓘ), then <b>Permissions</b> or <b>Site settings</b>, and allow the <b>Microphone</b>. Then reopen the academy.`;
+  const html = flagOff('eaa_mic_banner_off_' + micState) ? null : {       // "Not now" hides the banner for that state
     prompt: note('mic', `<b>Microphone is off.</b> "Say it" and talking with the tutor need it.`) ,
-    denied: warn(`<b>Microphone is blocked for this site.</b> To use "Say it" and the voice tutor: tap the lock or <b>ⓘ</b> icon next to the web address, set <b>Microphone</b> to <b>Allow</b>, then reload the page.`),
+    denied: warn(`<b>Microphone is blocked.</b> To use "Say it" and the voice tutor: ${unblock}`),
     nomic: warn(`<b>No microphone was found.</b> Connect or switch on a microphone to use "Say it" and the voice tutor, then tap Try again.`),
     unsupported: warn(`<b>This browser can't use the microphone here.</b> Open the app in Chrome, Edge or Safari to use "Say it" and the voice tutor.`),
   }[micState];
   bar.hidden = !html;
-  if (html){ bar.innerHTML = html; if (micState !== 'unsupported') bar.firstElementChild.insertAdjacentHTML('beforeend', btn(micState === 'prompt' ? 'Turn on microphone' : 'Try again')); }
+  if (!html) return (bar.innerHTML = '');
+  bar.innerHTML = html;
+  bar.firstElementChild.insertAdjacentHTML('beforeend', (micState !== 'unsupported' ? btn(micState === 'prompt' ? 'Turn on microphone' : 'Try again') : '') +
+    `<button class="btn" id="micNo">Not now</button>`);
+  // Listen, Slowly and the rest of the app work without the microphone, so the banner can be put away.
+  document.getElementById('micNo').onclick = () => { setFlagOff('eaa_mic_banner_off_' + micState); renderMicBar(); };
 }
 function setMic(state){ micState = state; if (state === 'granted') localStorage.setItem('mic_ok', '1'); renderMicBar(); }
 async function requestMic(){
