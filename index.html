@@ -257,7 +257,7 @@ details .list{padding:0 0 10px}
 .ltitle{margin:0;font-size:clamp(26px,3.2cqw,32px);font-weight:800;letter-spacing:-.025em;line-height:1.2;text-wrap:balance}
 .lmeta{display:flex;align-items:flex-start;gap:8px;color:var(--ink-2)}
 .lmeta>.ic{margin-top:3px;width:18px;height:18px;color:var(--muted)}
-.lmeta>div{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+.lctx{align-self:flex-start;margin-top:2px}   /* the context label lines up with the title and progress, on its own line */
 .lmeta p{margin:0;font-size:15px;line-height:1.55;text-wrap:pretty}
 .ctx-chip{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:99px;background:var(--sunk);color:var(--ink-2);font-size:12.5px;font-weight:700;white-space:nowrap}
 
@@ -1099,7 +1099,8 @@ function lessonHeader(L, extra = ''){
     </div>
     <div class="lhead">
       <h1 class="ltitle">${esc(L.title)}</h1>
-      <div class="lmeta">${ic('pin')}<div><p>${esc(scen)}</p>${ctx ? `<span class="ctx-chip">Context: ${esc(ctx)}</span>` : ''}</div></div>
+      <div class="lmeta">${ic('pin')}<p>${esc(scen)}</p></div>
+      ${ctx ? `<span class="ctx-chip lctx">Context: ${esc(ctx)}</span>` : ''}
       ${extra}
     </div>`;
 }
@@ -1179,7 +1180,7 @@ function finishNote(doneId){
   const m = byId[doneId].module, mm = String(m).padStart(2, '0');
   if (CURRICULUM.filter(l => l.module === m).every(l => isDone(l.id)))
     return `<div class="mod-banner">${ic('checkCircle')}<div><b>Module ${mm} complete: ${esc(MODULE_NAMES[m])}</b><span>Mabrouk! You finished all its lessons. Here's your next lesson.</span></div></div>`;
-  return note('spark', `<b>${label(doneId)} complete!</b> Here's your next lesson.`);
+  return note('spark', `<b>${esc(byId[doneId].title)}</b> (${label(doneId)}) complete! Here's your next lesson.`);
 }
 
 function lesson(id, opts){
