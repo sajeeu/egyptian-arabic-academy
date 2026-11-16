@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Egyptian Arabic Academy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
+:root{
+  --bg:#f3f6f2; --surface:#ffffff; --sunk:#eaf0ea; --ink:#16211b; --muted:#5d6b63; --line:#dce4dd;
+  --green:#13804a; --green-hi:#0f6b3d; --on-green:#ffffff; --pale:#dff2e6; --pale-ink:#125c35;
+  --sand:#b7842f; --sand-pale:#f6ecd9; --danger:#b42318; --danger-pale:#fdecea;
+  --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-ar:"Cairo","Segoe UI","Noto Naskh Arabic","Geeza Pro",sans-serif;
+  --r-lg:20px; --r:14px; --shadow:0 1px 2px rgba(20,40,30,.05),0 6px 20px rgba(20,40,30,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{ --bg:#0f1512; --surface:#18201b; --sunk:#131a16; --ink:#e8efe9; --muted:#9aa89f; --line:#27322b;
+    --green:#2aa765; --green-hi:#35b872; --on-green:#06140c; --pale:#183324; --pale-ink:#8fe2b2;
+    --sand:#d9ab5c; --sand-pale:#2c2416; --danger:#f08a80; --danger-pale:#3a1d1a;
+    --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark; }
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--font)}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--green) 55%,transparent);outline-offset:2px;border-radius:10px}
+.ic{width:20px;height:20px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.sm{width:16px;height:16px} .ic.lg{width:26px;height:26px}
+
+/* Top bar */
+.top{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top-in{max-width:760px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left))}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.01em;cursor:pointer;background:none;border:0;padding:0}
+.logo{width:36px;height:36px;border-radius:11px;background:var(--green);color:var(--on-green);display:grid;place-items:center}
+.brand small{display:block;font-weight:500;font-size:12px;color:var(--muted);letter-spacing:0}
+nav{display:flex;gap:4px}
+nav button{display:flex;align-items:center;gap:7px;background:none;border:0;border-radius:12px;padding:8px 12px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer}
+nav button:hover{background:var(--sunk);color:var(--ink)}
+nav button.on{background:var(--pale);color:var(--pale-ink)}
+
+.wrap{max-width:760px;margin:0 auto;padding:20px max(16px,env(safe-area-inset-right)) 40px max(16px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;box-shadow:var(--shadow)}
+.sec{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:10px 2px -4px}
+h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
+.title{font-size:22px;font-weight:800;line-height:1.25}
+.eyebrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--muted)}
+.tag{font-size:12px;font-weight:700;letter-spacing:.03em;padding:3px 8px;border-radius:8px;background:var(--sunk);color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tag.green{background:var(--pale);color:var(--pale-ink)} .tag.sand{background:var(--sand-pale);color:var(--sand)}
+.muted{color:var(--muted)} .small{font-size:14px}
+.meta{display:flex;align-items:flex-start;gap:8px;color:var(--muted);font-size:14px}
+.meta .ic{margin-top:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.between{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.grow{flex:1;min-width:0}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid transparent;border-radius:var(--r);padding:12px 18px;font-size:15px;font-weight:700;cursor:pointer;transition:background .15s,transform .05s;text-decoration:none;white-space:nowrap}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--green);color:var(--on-green)} .btn.primary:hover{background:var(--green-hi)}
+.btn.pale{background:var(--pale);color:var(--pale-ink)} .btn.pale:hover{filter:brightness(.97)}
+.btn.ghost{background:var(--surface);border-color:var(--line);color:var(--ink)} .btn.ghost:hover{background:var(--sunk)}
+.btn.danger{background:var(--surface);border-color:var(--line);color:var(--danger)}
+.btn.block{width:100%} .btn.lg{padding:15px 20px;font-size:16px}
+.btn:disabled{opacity:.55;cursor:default}
+.iconbtn{flex-direction:column;gap:4px;padding:12px 10px;font-size:13px;min-width:92px}
+
+/* Progress */
+.bar{height:8px;background:var(--sunk);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--green);border-radius:99px}
+.bar.mini{width:64px;height:6px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow)}
+.stat .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--pale);color:var(--pale-ink);flex:none}
+.stat.sand .ico{background:var(--sand-pale);color:var(--sand)}
+.stat b{display:block;font-size:20px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted);font-weight:600}
+.ring{flex:none}
+.ring circle{fill:none;stroke-width:6}
+.ring .bg{stroke:var(--sunk)} .ring .fg{stroke:var(--green);stroke-linecap:round;transform:rotate(-90deg);transform-origin:center}
+.ring text{font:700 13px var(--font);fill:var(--ink)}
+
+/* Continue learning: the curriculum lesson is always the main card, on top */
+.h-sec{font-size:24px;font-weight:800;letter-spacing:-.02em;line-height:1.2;margin:4px 2px -2px}
+.hero{border:2px solid color-mix(in srgb,var(--green) 45%,var(--line));border-radius:24px;padding:22px}
+.sub{background:color-mix(in srgb,var(--pale) 45%,var(--surface));border:1.5px solid color-mix(in srgb,var(--green) 25%,var(--line));border-radius:24px;padding:20px;box-shadow:none}
+.lc-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.lc-pill{font-size:clamp(11px,3.1vw,12.5px);font-weight:700;letter-spacing:.05em;text-transform:uppercase;background:var(--pale);color:var(--pale-ink);padding:5px 11px;border-radius:99px;white-space:nowrap}
+.lc-code{font-size:14px;font-weight:600;color:var(--muted);white-space:nowrap}
+.lc-title{font-size:26px;font-weight:800;line-height:1.2;margin:14px 0 8px}
+.lc-scen{color:var(--muted);margin:0}
+.lc-prog{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:18px}
+.hero .lc-prog b{font-size:18px}
+.sub .lc-prog{margin-top:14px} .sub .lc-prog b{font-weight:500}
+.conf{font-weight:700;color:var(--pale-ink);white-space:nowrap} .conf.zero{color:var(--muted);font-weight:500}
+.lc-bar{margin-top:10px}
+.lc-next{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;margin-top:14px;font-size:17px}
+.lc-next .ar{font-family:var(--font-ar);font-weight:600;direction:rtl}
+.sc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.sc-title{font-size:19px;font-weight:700;line-height:1.35}
+.sc-tag{font-size:14px;color:var(--muted);white-space:nowrap;padding-top:2px}
+.sc-meta{font-size:14px;color:var(--muted);margin-top:4px}
+.btn.round{border-radius:99px;margin-top:18px}
+
+/* Lesson overview */
+.ov-title{font-size:30px;font-weight:800;line-height:1.15;letter-spacing:-.02em}
+.ov-card{border-radius:22px}
+.ov-h{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700}
+.ov-h .ic{color:var(--muted)}
+.ov-scen{font-size:17px;margin:12px 0 0}
+.ov-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center;border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
+.ov-stats b{display:block;font-size:26px;font-weight:800;line-height:1.3} .ov-stats b.ov-st{font-size:19px;padding-top:4px}
+.ov-stats span{color:var(--muted);font-size:14px}
+.ov-sub{color:var(--muted);margin:0 2px;font-size:15px}
+.ov-text{margin:0 2px;font-size:17px}
+.ov-list{padding:4px 18px;border-radius:22px}
+.ov-ex{display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:18px 0;cursor:pointer}
+.ov-ex:first-child{border-top:0}
+.ov-n{width:32px;height:32px;border-radius:9px;background:var(--sunk);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--muted);flex:none;margin-top:4px}
+.ov-ar{display:block;font-family:var(--font-ar);font-weight:700;font-size:24px;line-height:1.5;text-align:left;unicode-bidi:plaintext}
+.ov-lat{display:block;font-weight:600;margin-top:4px}
+.ov-en{display:block;color:var(--muted)}
+.ov-ok{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--pale-ink);background:var(--pale);padding:3px 8px;border-radius:99px;flex:none;margin-top:6px}
+.btn.round-sm{border-radius:99px;padding:8px 14px}
+
+/* Modules */
+.mod-intro{color:var(--muted);margin:0 2px}
+.mod-tools{display:flex;gap:10px}
+.mod-tools input[type=text]{border-radius:99px;flex:1;min-width:0;padding-left:18px}
+.mod-tools .btn{border-radius:99px;flex:none}
+.mods{display:flex;flex-direction:column;gap:12px}
+.mod{background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow)}
+.mod summary{padding:14px 16px;gap:14px}
+.mod-num{width:54px;height:54px;border-radius:14px;background:var(--sunk);display:grid;place-items:center;font-size:18px;font-weight:800;flex:none;font-variant-numeric:tabular-nums}
+.mod-h{display:block;font-size:19px;font-weight:800;line-height:1.3}
+.mod-name{display:block;color:var(--muted);font-weight:500;line-height:1.35}
+.mod-count{display:block;font-size:13px;color:var(--muted);font-weight:500;margin-top:2px}
+.mod .list{padding:0 10px 10px}
+.view{font-size:13px;font-weight:700;color:var(--pale-ink);background:var(--pale);padding:4px 10px;border-radius:99px;flex:none}
+summary{cursor:pointer;padding:14px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none;font-weight:700}
+summary::-webkit-details-marker{display:none}
+.mod-meta{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chev{transition:transform .2s} details[open] .chev{transform:rotate(180deg)}
+.lesson-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:12px;padding:9px 8px;cursor:pointer}
+.lesson-row:hover{background:var(--sunk)}
+.lesson-row .ln{font-size:12px;font-weight:700;color:var(--muted);width:30px;font-variant-numeric:tabular-nums}
+.st-done{color:var(--green)} .st-prog{color:var(--sand)} .st-none{color:var(--line)}
+details .list{padding:0 0 10px}
+
+/* Lesson */
+.backrow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.steps{display:flex;gap:6px}
+.steps i{flex:1;height:6px;border-radius:99px;background:var(--sunk)}
+.steps i.c{background:var(--green)} .steps i.a{background:var(--sand)}
+.phrase{text-align:center;padding:28px 20px 22px}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--sand);background:var(--sand-pale);padding:4px 10px;border-radius:99px;letter-spacing:.04em;text-transform:uppercase}
+.arabic{font-family:var(--font-ar);font-weight:700;font-size:clamp(34px,8vw,52px);line-height:1.5;direction:rtl;margin:14px 0 4px;overflow-wrap:anywhere}
+.latin{font-size:21px;font-weight:700;letter-spacing:.01em}
+.english{font-size:17px;color:var(--muted);margin-top:4px}
+.audio{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:20px}
+.actions{display:flex;flex-direction:column;gap:10px}
+.hint{display:flex;gap:8px;align-items:flex-start;justify-content:center;text-align:center;font-size:13px;color:var(--muted)}
+
+.note,.warn{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:11px 13px;font-size:14px;margin-top:12px;text-align:left}
+.note{background:var(--pale);color:var(--pale-ink)}
+.warn{background:var(--danger-pale);color:var(--danger)}
+.note .ic,.warn .ic{margin-top:1px}
+
+/* Tutor */
+.tutor-head{display:flex;gap:12px;align-items:flex-start}
+.tutor-ico{width:42px;height:42px;border-radius:13px;background:var(--sand-pale);color:var(--sand);display:grid;place-items:center;flex:none}
+.log{max-height:280px;overflow:auto;display:flex;flex-direction:column;gap:8px;margin-top:14px;padding:2px}
+.log p{margin:0;max-width:85%;padding:9px 13px;border-radius:16px;font-size:15px;line-height:1.5}
+.log p[data-who="tutor"]{background:var(--sunk);border-bottom-left-radius:5px;align-self:flex-start}
+.log p[data-who="me"]{background:var(--green);color:var(--on-green);border-bottom-right-radius:5px;align-self:flex-end}
+.log:empty{display:none}
+.tstatus{display:flex;align-items:center;gap:8px;min-height:22px;margin:10px 0;font-size:14px;color:var(--muted)}
+.compose{display:flex;gap:8px;margin-top:10px}
+input[type=text],input[type=password],textarea{width:100%;padding:12px 14px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:16px}
+input:focus,textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px color-mix(in srgb,var(--green) 20%,transparent)}
+textarea{min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.live{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--danger);animation:pulse 1s infinite;flex:none}
+@keyframes pulse{50%{opacity:.3}}
+
+/* Search */
+.searchbox{position:relative}
+.searchbox .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.searchbox input{padding-left:44px}
+.result{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 4px;cursor:pointer}
+.result:hover{background:var(--sunk)}
+.result .ar{font-family:var(--font-ar);font-weight:700;direction:rtl;font-size:20px}
+
+/* Microphone banner */
+.wrap.micbar{padding-top:14px;padding-bottom:0}
+.micbar .note,.micbar .warn{margin-top:0;align-items:center;flex-wrap:wrap}
+.micbar .note>div,.micbar .warn>div{flex:1;min-width:200px}
+.micbar .btn{padding:8px 14px;font-size:14px;background:var(--surface);border-color:var(--line);color:var(--ink)}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:50;max-width:min(92vw,520px);background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:14px;font-size:14px;display:flex;gap:10px;align-items:flex-start;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+
+/* Phone: navigation moves to a bottom tab bar */
+@media (max-width:620px){
+  .top{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}  /* a blur here would trap the fixed tab bar inside the header */
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;justify-content:space-around;background:var(--surface);border-top:1px solid var(--line);padding:6px max(8px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom))}
+  nav button{flex-direction:column;gap:2px;font-size:11px;padding:6px 14px;flex:1}
+  .wrap{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
+  .stats{grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .stat{flex-direction:column;align-items:flex-start;padding:12px;gap:8px}
+  .iconbtn{min-width:0;flex:1}
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <button class="brand" onclick="show('dashboard')" aria-label="Go to dashboard">
+      <span class="logo" id="logoMark"></span>
+      <span>Egyptian Arabic Academy<small>Hospital Arabic, one phrase at a time</small></span>
+    </button>
+    <nav id="nav">
+      <button data-v="dashboard"></button>
+      <button data-v="search"></button>
+      <button data-v="progress"></button>
+    </nav>
+  </div>
+</header>
+<div class="wrap micbar" id="micbar" role="status" hidden></div>
+<main class="wrap" id="app"></main>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="curriculum.js"></script>
+<script>
+/* ---------- State ---------- */
+const KEY = 'egyptian_academy_v92';
+const byId = Object.fromEntries(CURRICULUM.map(l => [l.id, l]));
+// Module names, as given by the course author (not part of the curriculum file).
+const MODULE_NAMES = { 1: 'Greetings & Introductions', 2: 'Everyday Essentials', 3: 'Everyday Conversations', 4: 'Hospital Team Communication',
+  5: 'Patient Interviews', 6: 'Examinations & Patient Care', 7: 'Clinical Communication', 8: 'Advanced Egyptian Conversations' };
+const label = id => id.replace('_', ' ');        // "M01_L01" -> "M01 L01"
+const modTitle = ['', '', '', '', '', '', '', '', '']; // curriculum defines no module names, so none are shown
+
+function freshState(){ return { completed: [], lessons: {}, verified_spoken_passes: 0, mode: 'simplified_learner_confirmed' }; }
+let S = load();
+function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || freshState(); } catch { return freshState(); } }
+function save(){ S.last_updated = new Date().toISOString(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
+
+const isDone = id => S.completed.includes(id);
+const status = id => isDone(id) ? 'complete' : (S.lessons[id] ? 'in_progress' : 'not_started');
+// Primary = earliest lesson in curriculum order that is not complete (never "last visited").
+const primary = () => CURRICULUM.find(l => !isDone(l.id)) || null;
+const others = () => { const p = primary(); return CURRICULUM.filter(l => l !== p && status(l.id) === 'in_progress'); };
+const confirmedCount = () => Object.values(S.lessons).reduce((a, x) => a + x.confirmed.length, 0);
+
+function startLesson(id){ if (!S.lessons[id]) { S.lessons[id] = { idx: 1, confirmed: [] }; save(); } }
+
+/* Learner confirms the current expression. Idempotent: only the active expression can be confirmed, once. */
+function confirmExpression(id, n){
+  const L = byId[id], st = S.lessons[id];
+  if (!st || isDone(id) || st.idx !== n || st.confirmed.includes(n)) return;   // ignore duplicates / stale clicks
+  st.confirmed.push(n);
+  if (n < L.ex.length) { st.idx = n + 1; save(); return show('lesson', id); }
+  S.completed.push(id); save();                                               // lesson complete, counted once
+  const i = CURRICULUM.indexOf(L);
+  const next = CURRICULUM.slice(i + 1).find(l => !isDone(l.id));
+  if (!next) return show('finished');
+  startLesson(next.id); show('lesson', next.id, { justFinished: id });
+}
+
+/* ---------- Speech (browser, free) ---------- */
+let arVoice = null, currentUtterance = null;
+// Prefer an Egyptian natural voice (Edge has "Microsoft Salma/Shakir Online (Natural) - Arabic (Egypt)").
+function pickVoice(v = speechSynthesis.getVoices()){
+  const ar = v.filter(x => /^ar/i.test(x.lang));
+  arVoice = ar.find(x => /ar-EG/i.test(x.lang) && /natural|online/i.test(x.name)) || ar.find(x => /ar-EG/i.test(x.lang))
+         || ar.find(x => /natural|online/i.test(x.name)) || ar[0] || null;
+  return arVoice;
+}
+// Voices load in the background; wait for them (up to 2 s) the first time.
+function loadVoices(){
+  return new Promise(res => {
+    const v = speechSynthesis.getVoices(); if (v.length) return res(v);
+    const done = () => res(speechSynthesis.getVoices());
+    speechSynthesis.addEventListener('voiceschanged', done, { once: true });
+    setTimeout(done, 2000);
+  });
+}
+if ('speechSynthesis' in window){ loadVoices().then(pickVoice); speechSynthesis.addEventListener('voiceschanged', () => pickVoice()); }
+
+/* Speak Arabic. msg(text) shows what happened on the card; without it, problems use an alert. */
+async function speak(text, rate = 0.85, msg){
+  const say = msg || (t => t && toast(t));
+  if ('speechSynthesis' in window) pickVoice(await loadVoices());
+  if (!('speechSynthesis' in window) || !arVoice){
+    // Many phones and browsers have no Arabic voice: use Google's voice instead (same free key as the tutor).
+    if (localStorage.getItem('gemini_key')) return geminiSay(text, rate < 0.7, say);
+    return say('This browser has no Arabic voice. To hear the phrases, add your free Google key in <b>Progress → Tutor setup</b>; Listen will then use Google\'s voice.');
+  }
+  if (speechSynthesis.speaking || speechSynthesis.pending){ speechSynthesis.cancel(); await new Promise(r => setTimeout(r, 80)); }
+  speechSynthesis.resume();                                   // un-sticks a paused speech queue
+  const u = currentUtterance = new SpeechSynthesisUtterance(text); // keep a reference so it isn't garbage-collected mid-speech
+  u.voice = arVoice; u.lang = arVoice.lang; u.rate = rate;
+  let started = false;
+  u.onstart = () => { started = true; msg && msg(`Playing… <span class="muted">(${esc(arVoice.name)})</span>`); };
+  u.onend = () => { msg && msg(''); };
+  u.onerror = e => { if (e.error !== 'interrupted' && e.error !== 'canceled') say(`Audio couldn't play (${e.error}). Check your internet connection (Edge's natural voices are online) and try again.`); };
+  speechSynthesis.speak(u);
+  msg && msg('Starting audio…');
+  setTimeout(() => { if (!started && currentUtterance === u) say(`No sound started with the voice "${arVoice.name}". Check the volume and that this tab isn't muted, then tap again.`); }, 4000);
+}
+
+/* Mic practice: shows what the browser heard. It is NOT a pronunciation score. */
+function listen(outEl){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR){ outEl.innerHTML = warn('Your browser does not support speech recognition. Use Chrome or Edge, or type to the tutor below.'); return; }
+  const r = new SR(); r.lang = 'ar-EG'; r.interimResults = false;
+  outEl.innerHTML = note('mic', '<span class="live"></span> Listening… say the phrase.');
+  r.onresult = e => { outEl.innerHTML = note('mic', `I heard: <b dir="rtl">${esc(e.results[0][0].transcript)}</b><br><span class="small">This is just what the browser recognised, not a pronunciation grade. You decide when you're ready.</span>`); };
+  r.onerror = e => { outEl.innerHTML = warn(`Couldn't hear you (${esc(e.error)}). Check microphone permission and try again.`); };
+  r.start();
+}
+
+/* ---------- Tutor (Google Gemini Live) ----------
+   A live spoken conversation, like ChatGPT Voice: your microphone streams to Gemini and
+   its voice streams back. Uses your own Google AI Studio key, saved only in this browser. */
+const GEMINI_WS = 'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key=';
+const GEMINI_MODEL = 'models/gemini-3.8-live';
+let tutor = null;
+
+function tutorPrompt(L, ex){
+  return `You are a warm, patient Egyptian Arabic tutor in a live voice conversation. The learner is a female doctor working in an Egyptian hospital, a beginner. Explain in English; practise in Egyptian colloquial Arabic (Cairo dialect, not Modern Standard Arabic). Speak Arabic slowly and clearly.
+
+Current lesson: ${label(L.id)} — ${L.title}
+Scenario: ${L.scenario}
+Lesson expressions (use these EXACT phrases; do not invent other lesson phrases):
+${L.ex.map(e => `${e.n}. ${e.ar} | ${e.lat} | ${e.en}`).join('\n')}
+
+Focus now on expression ${ex.n}: ${ex.ar} (${ex.lat}) — "${ex.en}".
+Begin by greeting briefly, say this phrase slowly, and invite the learner to repeat it. Then help them practise: answer questions about meaning or pronunciation, give short gentle tips, and do a short role-play from the scenario using this and earlier phrases of the lesson.
+Keep each turn short (one to three sentences) and then let the learner speak. Never tell the learner the phrase or lesson is complete; they tap "Complete" in the app themselves when they feel ready.`;
+}
+
+function setStatus(msg){ const el = document.getElementById('tstatus'); if (el) el.innerHTML = msg; }
+/* Show transcripts: consecutive pieces from the same speaker join into one line. */
+function addText(who, text){
+  const log = document.getElementById('log'); if (!log || !text) return;
+  const last = log.lastElementChild;
+  if (last && last.dataset.who === who && !last.dataset.closed){ last.querySelector('span').textContent += text; }
+  else { log.insertAdjacentHTML('beforeend', `<p data-who="${who}"><span></span></p>`); log.lastElementChild.querySelector('span').textContent = text; }
+  log.scrollTop = 1e9;
+}
+function closeLine(){ const last = document.getElementById('log')?.lastElementChild; if (last) last.dataset.closed = '1'; }
+
+const b64ToBytes = b => Uint8Array.from(atob(b), c => c.charCodeAt(0));
+function bytesToB64(u8){ let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+
+/* Mic capture. The audio runs at the device's own rate (phones often can't use a custom rate) and is
+   converted here to the 16 kHz, 16-bit PCM Gemini expects, sent in ~100 ms chunks. */
+const WORKLET = `class Cap extends AudioWorkletProcessor{process(i){const c=i[0][0];if(c)this.port.postMessage(c.slice(0));return true}}registerProcessor('cap',Cap)`;
+// While the tutor is talking (and briefly after), the mic is not sent: on phones the loudspeaker leaks
+// into the mic, and Gemini would hear its own voice, think the learner interrupted, and stop talking.
+const tutorTalking = t => t.playing.size > 0 || performance.now() < (t.quietUntil || 0);
+async function startMic(t){
+  t.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+  const ctx = t.inCtx, ratio = ctx.sampleRate / 16000;
+  await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([WORKLET], { type: 'text/javascript' })));
+  const node = new AudioWorkletNode(ctx, 'cap');
+  let buf = [], n = 0;
+  node.port.onmessage = e => {
+    if (tutorTalking(t)){ buf = []; n = 0; return; }
+    buf.push(e.data); n += e.data.length;
+    if (n < 1600 * ratio) return;
+    const all = new Float32Array(n); let o = 0;
+    for (const f of buf){ all.set(f, o); o += f.length; }
+    buf = []; n = 0;
+    const pcm = new Int16Array(Math.floor(all.length / ratio));
+    for (let i = 0; i < pcm.length; i++){                         // average each window down to one 16 kHz sample
+      const a = Math.floor(i * ratio), b = Math.max(a + 1, Math.floor((i + 1) * ratio));
+      let s = 0; for (let j = a; j < b; j++) s += all[j];
+      pcm[i] = Math.max(-1, Math.min(1, s / (b - a))) * 0x7fff;
+    }
+    if (t.ws?.readyState === 1 && t.ready) t.ws.send(JSON.stringify({ realtimeInput: { audio: { data: bytesToB64(new Uint8Array(pcm.buffer)), mimeType: 'audio/pcm;rate=16000' } } }));
+  };
+  ctx.createMediaStreamSource(t.stream).connect(node);
+}
+
+/* Playback: Gemini sends 24 kHz 16-bit PCM; queue chunks back to back. */
+function playChunk(t, b64){
+  const bytes = b64ToBytes(b64), pcm = new Int16Array(bytes.buffer, 0, bytes.length >> 1);
+  const audio = t.outCtx.createBuffer(1, pcm.length, 24000), ch = audio.getChannelData(0);
+  for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 0x8000;
+  if (t.outCtx.state !== 'running') t.outCtx.resume().catch(() => {});   // phones can pause audio when the mic switches on
+  const src = t.outCtx.createBufferSource(); src.buffer = audio; src.connect(t.outCtx.destination);
+  t.next = Math.max(t.next, t.outCtx.currentTime + 0.05);
+  src.start(t.next); t.next += audio.duration;
+  if (t === tutor && !t.playing.size) setStatus('Tutor is speaking…');
+  t.playing.add(src);
+  src.onended = () => {
+    t.playing.delete(src);
+    if (t === tutor && !t.playing.size){ t.quietUntil = performance.now() + 400; setStatus('<span class="live"></span> Your turn: speak now.'); }
+  };
+}
+function stopPlayback(t){ t.playing.forEach(s => { try { s.stop(); } catch {} }); t.playing.clear(); t.next = 0; }
+
+/* Listen/Slowly fallback when the browser has no Arabic voice: Gemini reads the exact phrase aloud.
+   Audio is kept in memory, so tapping the same button again plays instantly. */
+const sayCache = new Map();
+let sayJob = null;
+function geminiSay(text, slow, say){
+  sayJob?.stop();
+  const ctx = new AudioContext({ sampleRate: 24000 }); ctx.resume();
+  const job = sayJob = { next: 0, playing: new Set(), outCtx: ctx, chunks: [],
+    stop(){ clearTimeout(job.timer); stopPlayback(job); try { job.ws?.close(); } catch {} ctx.close().catch(() => {}); if (sayJob === job) sayJob = null; } };
+  const id = (slow ? 'slow|' : '') + text;
+  const doneAfterPlayback = () => { job.timer = setTimeout(() => { if (sayJob === job){ say(''); job.stop(); } }, Math.max(0, job.next - ctx.currentTime) * 1000 + 300); };
+  if (sayCache.has(id)){ sayCache.get(id).forEach(c => playChunk(job, c)); say('Playing… <span class="muted">(Google voice)</span>'); return doneAfterPlayback(); }
+
+  say('Getting Google\'s voice…');
+  const ws = job.ws = new WebSocket(GEMINI_WS + encodeURIComponent(localStorage.getItem('gemini_key')));
+  job.timer = setTimeout(() => { if (sayJob === job){ say('Google\'s voice did not answer. Check your internet connection and tap again.'); job.stop(); } }, 15000);
+  ws.onopen = () => ws.send(JSON.stringify({ setup: {
+    model: GEMINI_MODEL,
+    generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
+    systemInstruction: { parts: [{ text: `You are a text-to-speech voice. You will be given one Egyptian Arabic phrase. Say exactly that phrase once, in natural Egyptian (Cairo) pronunciation${slow ? ', very slowly and clearly, with a short pause between words' : ', clearly at a gentle pace'}. Say nothing else: no greeting, no translation, no comment.` }] },
+  } }));
+  ws.onmessage = async e => {
+    const m = JSON.parse(typeof e.data === 'string' ? e.data : await e.data.text());
+    if (sayJob !== job) return;
+    if (m.setupComplete) return ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true } }));
+    const sc = m.serverContent; if (!sc) return;
+    for (const p of sc.modelTurn?.parts || []) if (p.inlineData?.data){
+      if (!job.chunks.length){ clearTimeout(job.timer); say('Playing… <span class="muted">(Google voice)</span>'); }
+      job.chunks.push(p.inlineData.data); playChunk(job, p.inlineData.data);
+    }
+    if (sc.turnComplete){ if (job.chunks.length) sayCache.set(id, job.chunks); ws.onclose = null; ws.close(); doneAfterPlayback(); }
+  };
+  ws.onclose = e => { if (sayJob === job && !job.chunks.length){ say(`Google's voice couldn't play${e.reason ? ` (${esc(e.reason)})` : ''}. Check your Google key in Progress → Tutor setup.`); job.stop(); } };
+}
+
+async function startTutor(L, ex){
+  const key = localStorage.getItem('gemini_key');
+  if (!key) return show('progress', null, { askKey: true });
+  stopTutor();
+  // One audio context at the device's own rate, created right on the tap so phones allow sound.
+  const ctx = new AudioContext(); ctx.resume();
+  const t = tutor = { ready: false, next: 0, playing: new Set(), outCtx: ctx, inCtx: ctx };
+  document.getElementById('tutorStart').hidden = true;
+  document.getElementById('tutorBox').hidden = false;
+  setStatus('Connecting…');
+  try { await startMic(t); }
+  catch (err){ setStatus(`<span style="color:var(--danger)">Microphone not available (${esc(err.message)}). Allow microphone access for this page, then try again.</span>`); return endTutorUI(); }
+  if (tutor !== t) return;
+
+  const ws = t.ws = new WebSocket(GEMINI_WS + encodeURIComponent(key));
+  ws.onopen = () => ws.send(JSON.stringify({ setup: {
+    model: GEMINI_MODEL,
+    generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
+    systemInstruction: { parts: [{ text: tutorPrompt(L, ex) }] },
+    inputAudioTranscription: {},
+    outputAudioTranscription: {},
+  } }));
+  ws.onmessage = async e => {
+    const m = JSON.parse(typeof e.data === 'string' ? e.data : await e.data.text());
+    if (m.setupComplete){
+      t.ready = true;
+      setStatus('<span class="live"></span> Live: just talk. The tutor will start.');
+      ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text: 'Hi! I am ready to practise.' }] }], turnComplete: true } }));
+      return;
+    }
+    const sc = m.serverContent; if (!sc) return;
+    if (sc.interrupted) stopPlayback(t);                       // learner started talking: stop the tutor's audio
+    for (const p of sc.modelTurn?.parts || []) if (p.inlineData?.data) playChunk(t, p.inlineData.data);
+    if (sc.inputTranscription?.text) addText('me', sc.inputTranscription.text);
+    if (sc.outputTranscription?.text) addText('tutor', sc.outputTranscription.text);
+    if (sc.turnComplete) closeLine();
+  };
+  ws.onerror = () => {};
+  ws.onclose = e => {
+    if (tutor !== t) return;
+    const why = e.reason ? esc(e.reason) : (t.ready ? 'The conversation ended.' : 'Could not connect. Check your Google API key on the Progress page.');
+    setStatus(`${t.ready ? '' : '<span style="color:var(--danger)">'}${why}${t.ready ? '' : '</span>'} Tap "Start talking" to begin again.`);
+    stopTutor(); endTutorUI(true);
+  };
+}
+
+function sendTyped(text){
+  if (!tutor?.ready) return;
+  closeLine(); addText('me', text); closeLine();
+  tutor.ws.send(JSON.stringify({ clientContent: { turns: [{ role: 'user', parts: [{ text }] }], turnComplete: true } }));
+}
+function endTutorUI(keepLog){
+  const s = document.getElementById('tutorStart'); if (s) s.hidden = false;
+  if (!keepLog){ const b = document.getElementById('tutorBox'); if (b) b.hidden = true; }
+}
+function stopTutor(){
+  const t = tutor; if (!t) return; tutor = null;
+  try { t.ws?.close(); } catch {}
+  t.stream?.getTracks().forEach(x => x.stop());
+  stopPlayback(t); t.outCtx?.close().catch(() => {});
+}
+
+/* ---------- Icons (inline line icons, no download needed) ---------- */
+const ICONS = {
+  home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  chart: '<path d="M3 21h18"/><path d="M6 17v-5"/><path d="M11 17V7"/><path d="M16 17v-8"/><path d="M21 17V4" opacity="0"/>',
+  volume: '<path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>',
+  slow: '<path d="M4 18a8 8 0 1 1 16 0"/><path d="m12 18-4.5-4.5"/><path d="M12 6v1.5"/><path d="M6.3 8.3l1 1"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  check: '<path d="m5 12 5 5L20 7"/>',
+  checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+  circle: '<circle cx="12" cy="12" r="9"/>',
+  half: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/>',
+  left: '<path d="M19 12H5"/><path d="m11 6-6 6 6 6"/>',
+  right: '<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+  retry: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
+  headset: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="2.5" y="14" width="5" height="7" rx="2"/><rect x="16.5" y="14" width="5" height="7" rx="2"/>',
+  send: '<path d="M21 3 10 14"/><path d="M21 3 14.5 21l-4.5-7-7-4.5z"/>',
+  key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3"/><path d="m16 7 3 3"/><path d="m18.5 4.5 2 2"/>',
+  copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
+  upload: '<path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>',
+  trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/>',
+  cap: '<path d="M2 9 12 4l10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  book: '<path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2z"/><path d="M22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"/>',
+  steth: '<path d="M5 3v6a5 5 0 0 0 10 0V3"/><path d="M10 14v2a5 5 0 0 0 10 0v-3"/><circle cx="20" cy="11" r="2"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/>',
+  alert: '<path d="M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17v.01"/>',
+  play: '<path d="M7 4v16l13-8z"/>',
+  playCircle: '<circle cx="12" cy="12" r="9"/><path d="m10 8.5 5 3.5-5 3.5z"/>',
+  chat: '<path d="M4 5h11v8H8.5L4 16.5z"/><path d="M15 9h5v8.5L16.5 15H10v-2"/>',
+  spark: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 17l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/>',
+  pin: '<path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+  layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
+  flame: '<path d="M12 21a7 7 0 0 0 7-7c0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8a7 7 0 0 0 7 7z"/>',
+};
+function ic(name, cls = ''){ return `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`; }
+const note = (icon, html) => `<div class="note">${ic(icon)}<div>${html}</div></div>`;
+const warn = (html) => `<div class="warn">${ic('alert')}<div>${html}</div></div>`;
+
+let toastTimer;
+function toast(text){
+  const t = document.getElementById('toast');
+  t.innerHTML = ic('info') + `<span>${text}</span>`; t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 6000);
+}
+
+/* ---------- Rendering ---------- */
+const $app = document.getElementById('app');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const statusIcon = id => ({ complete: ic('checkCircle', 'st-done'), in_progress: ic('half', 'st-prog'), not_started: ic('circle', 'st-none') }[status(id)]);
+const pill = id => ({ complete: '<span class="tag green">Complete</span>',
+  in_progress: `<span class="tag sand">${S.lessons[id]?.confirmed.length}/${byId[id].ex.length}</span>`, not_started: '' }[status(id)]);
+const ring = (done, total, size = 64) => { const r = size / 2 - 5, c = 2 * Math.PI * r;
+  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-label="${done} of ${total} phrases confirmed">
+    <circle class="bg" cx="${size/2}" cy="${size/2}" r="${r}"/><circle class="fg" cx="${size/2}" cy="${size/2}" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - done / total)}"/>
+    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle">${done}/${total}</text></svg>`; };
+
+function show(view, id, opts = {}){
+  stopTutor(); if ('speechSynthesis' in window) speechSynthesis.cancel();
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || ((view === 'lesson' || view === 'overview') && b.dataset.v === 'dashboard')));
+  ({ dashboard, lesson, overview, search, progress, finished }[view])(id, opts);
+  window.scrollTo(0, 0);
+}
+
+function dashboard(){
+  const p = primary(), done = S.completed.length;
+  if (!p) return finished();
+  const ps = status(p.id), pst = S.lessons[p.id];
+  const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length;
+  // Where a lesson stands: current expression, confirmed count and the next phrase (straight from the curriculum).
+  const pos = l => { const s = S.lessons[l.id], idx = s ? s.idx : 1, n = s ? s.confirmed.length : 0;
+    return { idx, n, ex: l.ex[idx - 1], conf: `<span class="conf${n ? '' : ' zero'}">${n} confirmed</span>` }; };
+  const scen = s => s.replace(/\s*\(context: [^)]*\)\s*$/, '');            // the context is shown separately
+  const ctx = s => (s.match(/\(context: ([^)]*)\)\s*$/) || [])[1];
+  const pp = pos(p);
+  let h = `
+    <h2 class="h-sec">Continue learning</h2>
+    <div class="card hero">
+      <div class="lc-top"><span class="lc-pill">Primary curriculum lesson</span><span class="lc-code">${label(p.id).replace(' ', ' · ')}</span></div>
+      <h3 class="lc-title">${esc(p.title)}</h3>
+      <p class="lc-scen">${esc(scen(p.scenario))}</p>
+      <div class="lc-prog"><b>Expression ${pp.idx} of ${p.ex.length}</b>${pp.conf}</div>
+      <div class="bar lc-bar"><i style="width:${pp.n / p.ex.length * 100}%"></i></div>
+      <div class="lc-next">Next: <span class="ar">${esc(pp.ex.ar)}</span><span>· ${esc(pp.ex.en)}</span></div>
+      <button class="btn primary block lg round" onclick="startLesson('${p.id}');show('lesson','${p.id}')">${ic('playCircle')}${ps === 'in_progress' ? 'Resume Curriculum Lesson' : 'Start Curriculum Lesson'}</button>
+    </div>`;
+  const o = others();
+  if (o.length){
+    h += `<h2 class="h-sec">Other lessons in progress</h2>` + o.map(l => { const lp = pos(l), c = ctx(l.scenario); return `
+      <div class="card sub">
+        <div class="sc-top"><div class="sc-title">${label(l.id)} — ${esc(l.title)}</div><span class="sc-tag">Secondary</span></div>
+        <div class="sc-meta">${esc(MODULE_NAMES[l.module])}${c ? ` · ${esc(c)}` : ''}</div>
+        <div class="lc-prog"><span>Expression ${lp.idx} of ${l.ex.length}</span>${lp.conf}</div>
+        <div class="lc-next">Next: <span class="ar">${esc(lp.ex.ar)}</span></div>
+        <button class="btn pale block lg round" onclick="show('lesson','${l.id}')">${ic('playCircle')}Resume Lesson</button>
+      </div>`; }).join('');
+  }
+  h += `
+    <div class="stats">
+      <div class="stat"><span class="ico">${ic('cap')}</span><div><b>${done}<span class="muted" style="font-size:13px"> / 64</span></b><span>Lessons complete</span></div></div>
+      <div class="stat sand"><span class="ico">${ic('flame')}</span><div><b>${ip}</b><span>In progress</span></div></div>
+      <div class="stat"><span class="ico">${ic('check')}</span><div><b>${confirmedCount()}</b><span>Phrases confirmed</span></div></div>
+    </div>`;
+  h += `<h2 class="h-sec">All modules</h2>
+    <p class="mod-intro">All 64 lessons are included below with individual statuses. Expand or collapse modules, search by lesson title or ID, and select View to preview a lesson without changing progress.</p>
+    <div class="mod-tools"><input type="text" id="modq" placeholder="Search lesson titles or IDs…" autocomplete="off"><button class="btn ghost" id="expandAll">Expand all</button></div>
+    <div class="mods">` +
+    [1,2,3,4,5,6,7,8].map(m => {
+      const ls = CURRICULUM.filter(l => l.module === m), count = s => ls.filter(l => status(l.id) === s).length;
+      const parts = [`${count('complete')}/8 complete`, count('in_progress') && `${count('in_progress')} in progress`, count('not_started') && `${count('not_started')} not started`].filter(Boolean);
+      const mm = String(m).padStart(2, '0');
+      return `<details class="mod"><summary><span class="mod-num">${mm}</span>
+          <span class="grow"><span class="mod-h">Module ${mm}</span><span class="mod-name">${esc(MODULE_NAMES[m])}</span><span class="mod-count">${parts.join(' · ')}</span></span>${ic('chev', 'chev')}</summary><div class="list">` +
+        ls.map(l => `<button class="lesson-row" data-q="${esc((l.title + ' ' + l.id + ' ' + label(l.id)).toLowerCase())}" onclick="show('overview','${l.id}')">${statusIcon(l.id)}<span class="ln">L${String(l.lesson).padStart(2,'0')}</span><span class="grow">${esc(l.title)}</span>${pill(l.id)}<span class="view">View</span></button>`).join('') +
+        `</div></details>`;
+    }).join('') + `</div><p class="muted small" id="modnone" hidden>No lessons match that search.</p>`;
+  $app.innerHTML = h;
+
+  // Module list: search filter and expand/collapse all
+  const mods = [...$app.querySelectorAll('details.mod')], eb = document.getElementById('expandAll');
+  const syncBtn = () => { eb.textContent = mods.every(d => d.open) ? 'Collapse all' : 'Expand all'; };
+  mods.forEach(d => d.addEventListener('toggle', syncBtn));
+  eb.onclick = () => { const open = !mods.every(d => d.open); mods.forEach(d => d.open = open); syncBtn(); };
+  document.getElementById('modq').oninput = e => {
+    const q = e.target.value.trim().toLowerCase().replace(/[_·]/g, ' ').replace(/\s+/g, ' ');
+    let any = false;
+    mods.forEach(d => {
+      let hit = 0;
+      d.querySelectorAll('.lesson-row').forEach(r => { const ok = !q || r.dataset.q.replace(/_/g, ' ').includes(q); r.hidden = !ok; hit += ok; });
+      d.hidden = !hit; d.open = !!q && hit > 0; any ||= hit > 0;
+    });
+    document.getElementById('modnone').hidden = any; syncBtn();
+  };
+}
+
+function lessonHeader(L, extra = ''){
+  return `<div class="backrow">
+      <button class="btn ghost" onclick="show('dashboard')">${ic('left', 'sm')}Back to Dashboard</button>
+      <span class="tag green">${label(L.id)}</span>
+    </div>
+    <div>
+      <h1 class="title">${esc(L.title)}</h1>
+      <div class="meta" style="margin-top:6px">${ic('pin', 'sm')}<span>${esc(L.scenario)}</span></div>
+      ${extra}
+    </div>`;
+}
+
+/* Lesson overview: opens first from the module list. Viewing it never changes progress. */
+const ORDINAL = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+function overview(id){
+  const L = byId[id], st = status(id), s = S.lessons[id], p = primary(), code = label(id);
+  const stLabel = { not_started: 'Not Started', in_progress: 'In Progress', complete: 'Complete' }[st];
+  const n = L.ex.length;
+  let next;
+  if (st === 'not_started'){
+    const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length + 1;
+    const role = p === L ? `<b>${code} is your primary curriculum lesson.</b>`
+      : `It becomes your ${ORDINAL[ip - 1] || 'number ' + ip} in-progress lesson. <b>${label(p.id)} stays the primary curriculum lesson.</b>`;
+    next = `<h2 class="h-sec">Start this lesson</h2>
+      <p class="ov-text">Selecting <b>Start Lesson</b> begins ${code} at expression 1/${n}, with no expressions confirmed. ${role}</p>
+      <button class="btn primary block lg round" id="ovGo" onclick="startLesson('${id}');show('lesson','${id}')">${ic('playCircle')}Start Lesson</button>`;
+  } else if (st === 'in_progress'){
+    next = `<h2 class="h-sec">Continue this lesson</h2>
+      <p class="ov-text">You're on expression ${s.idx}/${n}, with ${s.confirmed.length} confirmed. ${p === L ? `<b>This is your primary curriculum lesson.</b>` : `<b>${label(p.id)} stays the primary curriculum lesson.</b>`}</p>
+      <button class="btn ${p === L ? 'primary' : 'pale'} block lg round" id="ovGo" onclick="show('lesson','${id}')">${ic('playCircle')}${p === L ? 'Resume Curriculum Lesson' : 'Resume Lesson'}</button>`;
+  } else {
+    next = `<h2 class="h-sec">Lesson complete</h2><p class="ov-text">You confirmed all ${n} expressions. Tap any expression above to hear it again.</p>`;
+  }
+  $app.innerHTML = `
+    <div class="backrow"><button class="btn ghost round-sm" onclick="show('dashboard')">${ic('left', 'sm')}Back</button><span class="tag green">${code}</span></div>
+    <div><h1 class="ov-title">${esc(L.title)}</h1><div class="muted" style="margin-top:4px">Module ${String(L.module).padStart(2, '0')} · ${esc(MODULE_NAMES[L.module])}</div></div>
+    <div class="card ov-card">
+      <div class="ov-h">${ic('chat')}Exact curriculum scenario</div>
+      <p class="ov-scen">${esc(L.scenario)}</p>
+      <div class="ov-stats"><div><b>${n}</b><span>Authored expressions</span></div><div><b class="ov-st">${stLabel}</b><span>Lesson status</span></div></div>
+    </div>
+    <h2 class="h-sec">All ${n} expressions</h2>
+    <p class="ov-sub">Exact Arabic, English and Latin cues, in the authored curriculum order. Preview only — ${st === 'not_started' ? 'no expression is confirmed' : 'viewing this does not change your progress'}. Tap one to hear it.</p>
+    <div class="card ov-list">` +
+      L.ex.map(e => `<button class="ov-ex" onclick="speak(${esc(JSON.stringify(e.ar))})">
+        <span class="ov-n">${e.n}</span>
+        <span class="grow"><span class="ov-ar" dir="rtl" lang="ar">${esc(e.ar)}</span><span class="ov-lat">${esc(e.lat)}</span><span class="ov-en">${esc(e.en)}</span></span>
+        ${s?.confirmed.includes(e.n) ? `<span class="ov-ok">${ic('checkCircle', 'sm')}Confirmed</span>` : ''}</button>`).join('') +
+    `</div>
+    ${next}
+    <button class="btn ghost block lg round" onclick="show('dashboard')">${ic('left', 'sm')}Back to Dashboard</button>`;
+}
+
+function lesson(id, opts){
+  const L = byId[id], st = status(id);
+
+  if (st === 'not_started') return overview(id);   // preview: does not change status
+  if (st === 'complete'){               // review only
+    $app.innerHTML = lessonHeader(L, `<div class="eyebrow" style="margin-top:10px">${ic('checkCircle', 'sm st-done')} Completed · tap a phrase to hear it</div>`) +
+      `<div class="card" style="padding:6px 16px">` +
+      L.ex.map(e => `<button class="result" onclick="speak(${esc(JSON.stringify(e.ar))})">
+        <span class="tag">${e.n}</span><span class="grow"><span class="ar" style="display:block">${esc(e.ar)}</span><b>${esc(e.lat)}</b> · <span class="muted">${esc(e.en)}</span></span>${ic('volume')}</button>`).join('') +
+      `</div>`;
+    return;
+  }
+
+  const s = S.lessons[id], ex = L.ex[s.idx - 1], last = s.idx === L.ex.length;
+  $app.innerHTML = `
+    ${opts.justFinished ? note('spark', `<b>${label(opts.justFinished)} complete!</b> Here's your next lesson.`) : ''}
+    ${lessonHeader(L)}
+    <div>
+      <div class="between small muted" style="margin-bottom:8px"><span>Phrase ${s.idx} of ${L.ex.length}</span><span>${s.confirmed.length} confirmed</span></div>
+      <div class="steps">${L.ex.map(e => `<i class="${s.confirmed.includes(e.n) ? 'c' : e.n === s.idx ? 'a' : ''}"></i>`).join('')}</div>
+    </div>
+
+    <div class="card phrase">
+      <span class="badge">Phrase ${s.idx}</span>
+      <div class="arabic" lang="ar">${esc(ex.ar)}</div>
+      <div class="latin">${esc(ex.lat)}</div>
+      <div class="english">${esc(ex.en)}</div>
+      <div class="audio">
+        <button class="btn ghost iconbtn" id="play">${ic('volume', 'lg')}Listen</button>
+        <button class="btn ghost iconbtn" id="slow">${ic('slow', 'lg')}Slowly</button>
+        <button class="btn ghost iconbtn" id="mic">${ic('mic', 'lg')}Say it</button>
+      </div>
+      <div id="heard"></div>
+    </div>
+
+    <div class="card">
+      <div class="tutor-head">
+        <span class="tutor-ico">${ic('headset')}</span>
+        <div class="grow"><div class="between"><b>Practise with your tutor</b><span class="tag">Optional</span></div>
+          <div class="muted small">Talk out loud about this phrase: say it, ask what it means, or role-play the scene. Stop whenever you like.</div></div>
+      </div>
+      <button class="btn pale block" id="tutorStart" style="margin-top:14px">${ic('mic')}Start talking with tutor</button>
+      <div id="tutorBox" hidden>
+        <div class="log" id="log"></div>
+        <div id="tstatus" class="tstatus"></div>
+        <div class="compose">
+          <input type="text" id="typed" placeholder="…or type a message" class="grow">
+          <button class="btn ghost" id="send" aria-label="Send message">${ic('send')}</button>
+          <button class="btn danger" id="tutorEnd">${ic('stop', 'sm')}End</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary block lg" id="ok">${ic(last ? 'check' : 'right')}${last ? 'Complete & Next Lesson' : 'Complete & Next Card'}</button>
+      <button class="btn ghost block" id="again">${ic('retry', 'sm')}Not Complete — Practice Again</button>
+      <div id="againMsg"></div>
+      <div class="hint">${ic('info', 'sm')}<span>Tap Complete when <i>you</i> feel ready. It's your own confirmation, not a pronunciation score.</span></div>
+    </div>`;
+
+  const heard = document.getElementById('heard');
+  const audioMsg = t => { heard.innerHTML = t ? note('volume', t) : ''; };
+  document.getElementById('play').onclick = () => speak(ex.ar, 0.85, audioMsg);
+  document.getElementById('slow').onclick = () => speak(ex.ar, 0.55, audioMsg);
+  document.getElementById('mic').onclick = () => listen(heard);
+  document.getElementById('tutorStart').onclick = () => startTutor(L, ex);
+  document.getElementById('tutorEnd').onclick = () => { stopTutor(); setStatus('Conversation ended.'); endTutorUI(true); };
+  const typed = document.getElementById('typed');
+  const send = () => { const t = typed.value.trim(); if (t && tutor?.ready){ typed.value = ''; sendTyped(t); } };
+  document.getElementById('send').onclick = send;
+  typed.onkeydown = e => { if (e.key === 'Enter') send(); };
+  document.getElementById('ok').onclick = e => { e.currentTarget.disabled = true; confirmExpression(id, s.idx); };
+  document.getElementById('again').onclick = () => {
+    document.getElementById('againMsg').innerHTML = note('retry', 'No problem, nothing has changed. Listen again, say it slowly a few times, or talk it through with the tutor.');
+  };
+}
+
+function search(){
+  $app.innerHTML = `<h1 class="title">Search phrases</h1>
+    <div class="card">
+      <div class="searchbox">${ic('search')}<input type="text" id="q" placeholder="Search Arabic, pronunciation or English…" autofocus></div>
+      <div id="res" class="small muted" style="margin-top:12px">Type to search all 321 phrases.</div>
+    </div>`;
+  const q = document.getElementById('q'), res = document.getElementById('res');
+  const norm = s => s.toLowerCase().replace(/[ً-ْ'’]/g, '');
+  q.oninput = () => {
+    const t = norm(q.value.trim());
+    if (!t){ res.innerHTML = 'Type to search all 321 phrases.'; return; }
+    const hits = [];
+    for (const L of CURRICULUM) for (const e of L.ex) if ([e.ar, e.lat, e.en].some(x => norm(x).includes(t))) hits.push([L, e]);
+    res.innerHTML = hits.length ? `<div style="margin-bottom:6px">${hits.length} match${hits.length === 1 ? '' : 'es'}${hits.length > 60 ? ' (showing 60)' : ''}</div>` +
+      hits.slice(0, 60).map(([L, e]) => `<button class="result" onclick="show('lesson','${L.id}')">
+        <span class="grow" style="color:var(--ink)"><span class="ar" style="display:block">${esc(e.ar)}</span><b>${esc(e.lat)}</b> · ${esc(e.en)}</span>
+        <span class="tag">${label(L.id)} · ${e.n}</span></button>`).join('') : 'No matches.';
+  };
+}
+
+function progress(_, opts){
+  const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length, d = S.completed.length;
+  const hasKey = !!localStorage.getItem('gemini_key');
+  $app.innerHTML = `
+    <h1 class="title">Progress</h1>
+    <div class="stats">
+      <div class="stat"><span class="ico">${ic('cap')}</span><div><b>${d}</b><span>Complete</span></div></div>
+      <div class="stat sand"><span class="ico">${ic('flame')}</span><div><b>${ip}</b><span>In progress</span></div></div>
+      <div class="stat"><span class="ico">${ic('circle')}</span><div><b>${64 - d - ip}</b><span>Not started</span></div></div>
+    </div>
+    <div class="card">
+      <div class="between"><b>Modules</b><span class="muted small">${confirmedCount()} phrases confirmed</span></div>
+      ${[1,2,3,4,5,6,7,8].map(m => { const n = CURRICULUM.filter(l => l.module === m && isDone(l.id)).length;
+        return `<div class="between small" style="margin-top:12px"><span>Module ${m} · ${esc(MODULE_NAMES[m])}</span><span class="muted">${n}/8</span></div><div class="bar" style="margin-top:4px"><i style="width:${n / 8 * 100}%"></i></div>`; }).join('')}
+      <div class="hint" style="justify-content:flex-start;text-align:left;margin-top:14px">${ic('info', 'sm')}<span>Completion is your own confirmation (simplified learner-confirmed mode). Verified spoken passes: 0.</span></div>
+    </div>
+
+    <div class="card" id="keycard">
+      <div class="tutor-head">
+        <span class="tutor-ico">${ic('key')}</span>
+        <div class="grow"><div class="between"><b>Tutor setup</b>${hasKey ? `<span class="tag green">Key saved</span>` : `<span class="tag">No key yet</span>`}</div>
+          <div class="muted small">The tutor is a live voice conversation powered by Google Gemini Live. It needs a free Google AI Studio API key: go to aistudio.google.com, sign in with a Google account, and choose "Get API key". Google's free tier has usage limits. The key is saved only in this browser. If this browser has no Arabic voice, Listen and Slowly also use this key to play Google's voice.</div></div>
+      </div>
+      ${opts?.askKey ? note('info', 'Add your Google API key to start talking with the tutor. Everything else in the app works without it.') : ''}
+      <div class="compose" style="margin-top:14px"><input type="password" id="key" class="grow" placeholder="${hasKey ? 'Enter a new key to replace the saved one' : 'Paste your Google API key'}">
+      <button class="btn primary" id="saveKey">${ic('check', 'sm')}Save</button></div>
+    </div>
+
+    <div class="card">
+      <b>Move to another device</b>
+      <p class="muted small" style="margin:4px 0 12px">Your progress saves automatically in this browser. To move it, copy this text and paste it on the other device.</p>
+      <textarea id="state" aria-label="Progress snapshot">ACADEMY_STATE_V9\n${esc(JSON.stringify(S))}</textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="btn pale" id="copyState">${ic('copy', 'sm')}Copy</button>
+        <button class="btn ghost" id="importState">${ic('upload', 'sm')}Load pasted progress</button>
+        <button class="btn danger" id="reset">${ic('trash', 'sm')}Start over</button>
+      </div>
+      <div id="stateMsg"></div>
+    </div>`;
+  if (opts?.askKey) document.getElementById('keycard').scrollIntoView();
+  const stateMsg = h => document.getElementById('stateMsg').innerHTML = h;
+  document.getElementById('saveKey').onclick = () => {
+    const v = document.getElementById('key').value.trim();
+    if (v){ localStorage.setItem('gemini_key', v); localStorage.removeItem('anthropic_key'); progress(); toast('Key saved. Open a lesson and tap "Start talking with tutor".'); }
+  };
+  document.getElementById('copyState').onclick = e => {
+    const b = e.currentTarget, ta = document.getElementById('state');
+    navigator.clipboard.writeText(ta.value).then(() => b.innerHTML = ic('check', 'sm') + 'Copied', () => { ta.select(); toast('Press Ctrl+C to copy the selected text.'); });
+  };
+  document.getElementById('importState').onclick = () => {
+    try {
+      const obj = JSON.parse(document.getElementById('state').value.replace(/^\s*ACADEMY_STATE_V9\s*/, ''));
+      const okIds = (obj.completed || []).every(i => byId[i]) && Object.entries(obj.lessons || {}).every(([i, x]) =>
+        byId[i] && Number.isInteger(x.idx) && x.idx >= 1 && x.idx <= byId[i].ex.length && Array.isArray(x.confirmed));
+      if (!okIds) throw 0;
+      S = { ...freshState(), ...obj }; save(); show('dashboard'); toast('Progress loaded.');
+    } catch { stateMsg(warn("That text isn't a valid progress snapshot. Nothing was changed.")); }
+  };
+  document.getElementById('reset').onclick = e => {      // two-step confirmation, no pop-up
+    const b = e.currentTarget;
+    if (!b.dataset.armed){ b.dataset.armed = '1'; b.innerHTML = ic('alert', 'sm') + 'Tap again to erase all progress'; setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.innerHTML = ic('trash', 'sm') + 'Start over'; } }, 5000); return; }
+    S = freshState(); save(); show('dashboard'); toast('Progress erased. Starting from 0/64.');
+  };
+}
+
+function finished(){
+  $app.innerHTML = `<div class="card" style="text-align:center;padding:36px 20px">
+    <div class="logo" style="width:64px;height:64px;margin:0 auto 14px;border-radius:18px">${ic('cap', 'lg')}</div>
+    <h1 class="title">Mabrouk! You finished all 64 lessons.</h1><p class="muted">All 8 modules complete. Revisit any lesson from Search to review it.</p>
+    <button class="btn primary" onclick="show('search')">${ic('search', 'sm')}Review phrases</button></div>`;
+}
+
+document.getElementById('logoMark').innerHTML = ic('steth');
+const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], progress: ['chart', 'Progress'] };
+document.querySelectorAll('#nav button').forEach(b => { const [i, t] = NAV[b.dataset.v]; b.innerHTML = ic(i) + `<span>${t}</span>`; b.onclick = () => show(b.dataset.v); });
+show('dashboard');
+
+/* ---------- Microphone permission ----------
+   "Say it" and the voice tutor need the microphone. The app asks when it opens and shows a banner while it is off. */
+let micState = 'prompt';   // granted | prompt | denied | nomic | unsupported
+function renderMicBar(){
+  const bar = document.getElementById('micbar');
+  const btn = label => `<button class="btn" onclick="requestMic()">${ic('mic', 'sm')}${label}</button>`;
+  const html = {
+    prompt: note('mic', `<b>Microphone is off.</b> "Say it" and talking with the tutor need it.`) ,
+    denied: warn(`<b>Microphone is blocked for this site.</b> To use "Say it" and the voice tutor: tap the lock or <b>ⓘ</b> icon next to the web address, set <b>Microphone</b> to <b>Allow</b>, then reload the page.`),
+    nomic: warn(`<b>No microphone was found.</b> Connect or switch on a microphone to use "Say it" and the voice tutor, then tap Try again.`),
+    unsupported: warn(`<b>This browser can't use the microphone here.</b> Open the app in Chrome, Edge or Safari to use "Say it" and the voice tutor.`),
+  }[micState];
+  bar.hidden = !html;
+  if (html){ bar.innerHTML = html; if (micState !== 'unsupported') bar.firstElementChild.insertAdjacentHTML('beforeend', btn(micState === 'prompt' ? 'Turn on microphone' : 'Try again')); }
+}
+function setMic(state){ micState = state; if (state === 'granted') localStorage.setItem('mic_ok', '1'); renderMicBar(); }
+async function requestMic(){
+  if (!navigator.mediaDevices?.getUserMedia) return setMic('unsupported');
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    s.getTracks().forEach(t => t.stop());                      // only asking permission; release the mic straight away
+    setMic('granted');
+  } catch (err){
+    if (err.name === 'NotFoundError' || err.name === 'OverconstrainedError') return setMic('nomic');
+    localStorage.removeItem('mic_ok');
+    // A dismissed prompt is still "prompt"; a refusal is "denied".
+    const p = await navigator.permissions?.query({ name: 'microphone' }).catch(() => null);
+    setMic(p && p.state === 'prompt' ? 'prompt' : 'denied');
+  }
+}
+(async () => {
+  if (!navigator.mediaDevices?.getUserMedia) return setMic('unsupported');
+  const p = await navigator.permissions?.query({ name: 'microphone' }).catch(() => null);
+  if (p){
+    p.onchange = () => setMic(p.state);                          // follows changes made in the browser's site settings
+    if (p.state !== 'prompt') return setMic(p.state);
+  } else if (localStorage.getItem('mic_ok')) return setMic('granted');   // browsers without the Permissions API
+  renderMicBar(); requestMic();                                 // first visit: ask now
+})();
+</script>
+</body>
+</html>
