@@ -300,6 +300,124 @@ details .list{padding:0 0 10px}
 .lesson .hint .ic{margin-top:2px}
 @media (prefers-reduced-motion:reduce){ .tile,.tile *,.live-dot,.btn .ic{animation:none !important;transition:none !important} }
 
+/* Lesson preview (redesign): scenario + continue on the left, the expression list on the right from 1000px */
+.pvw,.pgw{container:page/inline-size;width:100%;max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:24px}
+.pvw .card,.pgw .card{border-radius:22px;box-shadow:0 1px 2px rgba(16,35,26,.04),0 14px 34px -20px rgba(16,35,26,.2)}
+.pv-mod{margin:0;font-size:15px;font-weight:500;color:var(--muted)}
+.pvw .lhead{gap:4px}
+.pv{display:grid;grid-template-columns:minmax(0,1fr);grid-template-areas:"scn" "list" "cont";gap:28px}
+.pv-scn{grid-area:scn;min-width:0} .pv-list{grid-area:list;min-width:0} .pv-cont{grid-area:cont;min-width:0}
+@container page (min-width:1000px){ .pv{grid-template-columns:400px minmax(0,1fr);grid-template-areas:"scn list" "cont list";grid-template-rows:auto 1fr;gap:20px 48px} .pv-cont{align-self:start} }
+.pv-scn,.pv-cont{display:flex;flex-direction:column;gap:16px;padding:20px}
+.pv-scn-top{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.pv-h{display:flex;align-items:center;gap:10px}
+.pv-h h2{margin:0;font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.pv-ico{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--pale);color:var(--pale-ink)}
+.pv-scen{margin:0;font-size:16px;font-weight:500;line-height:1.55;text-wrap:pretty}
+.pv-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:16px;border-top:1px solid var(--line)}
+.pv-stats>div{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.pv-stats>div>span:first-child{font-size:12.5px;font-weight:600;color:var(--muted)}
+.pv-stats b{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.2;font-variant-numeric:tabular-nums}
+.st-pill{display:inline-flex;align-items:center;gap:7px;min-height:30px;padding:0 12px;border-radius:99px;font-size:13.5px;font-weight:800;background:var(--sunk);color:var(--ink-2)}
+.st-pill i{width:7px;height:7px;border-radius:99px;background:var(--muted)}
+.st-pill.in_progress{background:var(--sand-pale);color:var(--sand)} .st-pill.in_progress i{background:var(--amber)}
+.st-pill.complete{background:var(--pale);color:var(--pale-ink)} .st-pill.complete i{background:var(--green)}
+.pv-list{display:flex;flex-direction:column;gap:14px}
+.pv-lh{display:flex;flex-direction:column;gap:6px}
+.pv-lh h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.015em;line-height:1.3}
+.pv-lh p{margin:0;max-width:64ch;font-size:14px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
+.pv-lh .ctx-chip{gap:6px;min-height:26px}
+.exprs-card{padding:0}
+.exprs{list-style:none;margin:0;padding:8px}
+.exprs li{padding:2px 0} .exprs li+li{border-top:1px solid var(--sunk)}
+.expr{display:flex;align-items:center;gap:14px;width:100%;padding:12px;border:0;border-radius:14px;background:transparent;color:var(--ink);text-align:left;font:inherit;cursor:pointer;transition:background-color .14s ease}
+.expr:hover{background:var(--bg)} .expr:active{background:var(--sunk)}
+.num{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--sunk);color:var(--ink-2);font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.num.done{background:var(--green);color:var(--on-green)}
+.num.now{background:var(--pale);color:var(--pale-ink);box-shadow:inset 0 0 0 2px var(--green)}
+.expr-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.expr-top{display:flex;align-items:center;justify-content:space-between;gap:4px 12px;flex-wrap:wrap}
+.expr-ar{font-family:var(--font-ar);font-size:30px;font-weight:700;line-height:1.5}
+.expr-lat{font-size:15px;font-weight:700;line-height:1.4}
+.expr-en{font-size:14px;font-weight:500;line-height:1.4;color:var(--muted)}
+.chip-ok,.chip-now{display:inline-flex;align-items:center;gap:5px;min-height:24px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:800;white-space:nowrap}
+.chip-ok{background:var(--pale);color:var(--pale-ink)} .chip-ok .ic{width:12px;height:12px;stroke-width:3}
+.chip-now{background:var(--sand-pale);color:var(--sand)}
+.spk{flex:none;display:grid;place-items:center;width:40px;height:40px;border-radius:99px;background:var(--sunk);color:var(--ink-2);transition:background-color .16s ease,color .16s ease,transform .2s cubic-bezier(.2,.7,.2,1)}
+.expr:hover .spk{background:var(--pale);color:var(--pale-ink);transform:scale(1.06)}
+.expr.on,.expr.on:hover{background:var(--pale)}
+.expr.on .spk,.expr.on:hover .spk{background:var(--green);color:var(--on-green);animation:eaa-beat 1.1s ease-in-out infinite}
+.pv-ch{display:flex;flex-direction:column;gap:10px}
+.pv-ch h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.015em;line-height:1.3}
+.pv-ch p{margin:0;font-size:14px;line-height:1.55;color:var(--ink-2);text-wrap:pretty} .pv-ch p b{color:var(--ink)}
+.pv-ch .segs{margin-top:0}
+.pv-btns{display:flex;flex-direction:column;gap:10px}
+.pv-btns .go-btn{min-height:52px}
+
+/* Progress (redesign): one column on phones; two columns from 1000px */
+.pg{display:flex;flex-direction:column;gap:16px}
+.pg-col{display:contents}
+.o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o6{order:6}
+@container page (min-width:1000px){ .pg{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:24px;align-items:start} .pg-col{display:flex;flex-direction:column;gap:16px;min-width:0} }
+.pstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.pstat{display:flex;flex-direction:column;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px}
+.pst-ic{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--pale);color:var(--pale-ink)}
+.pst-ic .ic{width:18px;height:18px}
+.pstat.sand .pst-ic{background:var(--sand-pale);color:var(--sand)} .pstat.grey .pst-ic{background:var(--sunk);color:var(--ink-2)}
+.pstat b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+.pstat span:not(.pst-ic){display:block;font-size:12.5px;font-weight:600;line-height:1.35;color:var(--ink-2);margin-top:2px}
+.pcard{display:flex;flex-direction:column;gap:14px;padding:20px}
+.pcard h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.015em;line-height:1.3}
+.pdesc{margin:4px 0 0;font-size:14px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
+.tutor-ico.green{background:var(--pale);color:var(--pale-ink)}
+.pcard .tutor-head{gap:14px} .pcard .tutor-ico{width:44px;height:44px}
+.mrow{display:flex;align-items:center;gap:14px;padding:12px 0}
+.mrow+.mrow{border-top:1px solid var(--sunk)}
+.mnum{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:11px;background:var(--sunk);color:var(--ink-2);font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.mnum.active{background:var(--pale);color:var(--pale-ink)}
+.mnum.done{background:var(--green);color:var(--on-green)} .mnum.done .ic{width:18px;height:18px;stroke-width:3}
+.mrow-b{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px}
+.mrow-t{display:flex;align-items:baseline;justify-content:space-between;gap:2px 12px;flex-wrap:wrap}
+.mrow-n{font-size:15px;font-weight:700;line-height:1.35}
+.mrow-c{display:inline-flex;gap:8px;font-size:13px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.mrow-p{color:var(--sand)}
+.bar8{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+.bar8 span{height:6px;border-radius:99px;background:var(--line)} .bar8 .p{background:#E08A1E} .bar8 .c{background:var(--green)}
+.pfoot{display:flex;align-items:flex-start;gap:8px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted)}
+.pfoot .ic{margin-top:2px} .pfoot p{margin:0;font-size:13px;line-height:1.5}
+.pgw .btn{min-height:44px;padding:0 16px;font-size:14px;border-radius:14px}
+.pgw .btn.ghost,.pgw label.btn{border-color:var(--line-2)}
+.pgw .btn.danger{border-color:color-mix(in srgb,var(--danger) 35%,transparent)} .pgw .btn.danger:hover{background:var(--danger-pale)}
+.pgw .btn.push{margin-left:auto}
+.pgw .btn:disabled{opacity:.5;cursor:not-allowed}
+.keyrow{display:flex;flex-wrap:wrap;gap:10px}
+.keyrow input{flex:999 1 240px;min-width:0;height:48px;border-color:var(--line-2);border-radius:14px}
+.keyrow .btn{flex:1 0 auto;min-height:48px}
+.pgw textarea.code{min-height:128px;border-color:var(--line-2);border-radius:14px;background:var(--bg);font-size:12.5px;line-height:1.6;overflow-wrap:anywhere;resize:vertical}
+.tint{padding:12px 14px;border-radius:14px;background:var(--bg);border:1px solid var(--line)}
+.tint>b{display:block;font-size:13px;font-weight:800} .tint p{margin:4px 0 0;font-size:14px;line-height:1.5;color:var(--ink-2)} .tint p b{color:var(--ink)}
+.howto{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:10px}
+.bk-list{display:flex;flex-direction:column;gap:8px}
+.bk-row{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;padding:12px 12px 12px 14px}
+.bk-row>div{flex:1 1 180px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.bk-row>div b{font-size:14px;font-variant-numeric:tabular-nums} .bk-row>div span{font-size:13px;font-weight:500;color:var(--muted)}
+#stateMsg .note,#stateMsg .warn,#bkMsg .note,#bkMsg .warn{margin-top:0}
+#stateMsg:empty,#bkMsg:empty{display:none}
+
+/* Confirmation pop-up */
+dialog.modal{border:0;padding:0;border-radius:22px;background:var(--surface);color:var(--ink);width:min(420px,calc(100% - 32px));box-shadow:0 24px 60px -12px rgba(16,35,26,.45)}
+dialog.modal::backdrop{background:rgba(16,35,26,.55)}
+.mdl-in{padding:24px;display:flex;flex-direction:column;gap:10px}
+.mdl-ic{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:var(--pale);color:var(--pale-ink);margin-bottom:4px}
+.mdl-ic.danger{background:var(--danger-pale);color:var(--danger)}
+dialog.modal h2{margin:0;font-size:20px;font-weight:800;letter-spacing:-.015em}
+dialog.modal p{margin:0;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.mdl-btns{display:flex;flex-wrap:wrap-reverse;gap:10px;margin-top:12px}
+.mdl-btns .btn{flex:1 1 140px;min-height:48px;border-radius:14px}
+.mdl-btns .btn.ghost{border-color:var(--line-2)}
+.btn.danger-solid{background:var(--danger);color:var(--surface)} .btn.danger-solid:hover{filter:brightness(.92)}
+.mdl-btns .btn:disabled{opacity:.55;cursor:wait}
+
 .note,.warn{display:flex;gap:10px;align-items:flex-start;border-radius:12px;padding:11px 13px;font-size:14px;margin-top:12px;text-align:left}
 .note{background:var(--pale);color:var(--pale-ink)}
 .warn{background:var(--danger-pale);color:var(--danger)}
@@ -730,6 +848,7 @@ const ICONS = {
   copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
   upload: '<path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>',
   download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+  phone: '<rect x="5" y="2" width="14" height="20" rx="2"/><path d="M12 18h.01"/>',
   trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/>',
   cap: '<path d="M2 9 12 4l10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
@@ -918,39 +1037,68 @@ function overview(id){
   const L = byId[id], st = status(id), s = S.lessons[id], p = primary(), code = label(id);
   const stLabel = { not_started: 'Not Started', in_progress: 'In Progress', complete: 'Complete' }[st];
   const n = L.ex.length;
+  const conf = s ? s.confirmed : [], cur = st === 'in_progress' ? s.idx : 0;
+  const segs = `<div class="segs" role="img" aria-label="${conf.length} of ${n} expressions confirmed.${cur ? ` You are on expression ${cur}.` : ''}" style="grid-template-columns:repeat(${n},minmax(0,1fr))">` +
+    L.ex.map(e => `<span class="seg${conf.includes(e.n) ? ' done' : e.n === cur ? ' now' : ''}"></span>`).join('') + `</div>`;
+  const back = `<button class="btn ghost block back" onclick="show('dashboard')">${ic('left', 'sm')}Back to Dashboard</button>`;
   let next;
   if (st === 'not_started'){
     const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length + 1;
     const role = p === L ? `<b>${code} is your primary curriculum lesson.</b>`
       : `It becomes your ${ORDINAL[ip - 1] || 'number ' + ip} in-progress lesson. <b>${label(p.id)} stays the primary curriculum lesson.</b>`;
-    next = `<h2 class="h-sec">Start this lesson</h2>
-      <p class="ov-text">Selecting <b>Start Lesson</b> begins ${code} at expression 1/${n}, with no expressions confirmed. ${role}</p>
-      <button class="btn primary block lg round" id="ovGo" onclick="startLesson('${id}');show('lesson','${id}')">${ic('playCircle')}Start Lesson</button>`;
+    next = `<div class="pv-ch"><h2 id="cont-h">Start this lesson</h2>
+      <p>Selecting <b>Start Lesson</b> begins ${code} at expression 1/${n}, with no expressions confirmed. ${role}</p></div>
+      <div class="pv-btns"><button class="btn primary block go-btn" id="ovGo" onclick="startLesson('${id}');show('lesson','${id}')">${ic('playCircle')}Start Lesson</button>${back}</div>`;
   } else if (st === 'in_progress'){
-    next = `<h2 class="h-sec">Continue this lesson</h2>
-      <p class="ov-text">You're on expression ${s.idx}/${n}, with ${s.confirmed.length} confirmed. ${p === L ? `<b>This is your primary curriculum lesson.</b>` : `<b>${label(p.id)} stays the primary curriculum lesson.</b>`}</p>
-      <button class="btn ${p === L ? 'primary' : 'pale'} block lg round" id="ovGo" onclick="show('lesson','${id}')">${ic('playCircle')}${p === L ? 'Resume Curriculum Lesson' : 'Resume Lesson'}</button>`;
+    next = `<div class="pv-ch"><h2 id="cont-h">Continue this lesson</h2>${segs}
+      <p>You're on expression ${s.idx}/${n}, with ${s.confirmed.length} confirmed. ${p === L ? `<b>This is your primary curriculum lesson.</b>` : `<b>${label(p.id)} stays the primary curriculum lesson.</b>`}</p></div>
+      <div class="pv-btns"><button class="btn ${p === L ? 'primary' : 'pale'} block go-btn" id="ovGo" onclick="show('lesson','${id}')">${ic('playCircle')}${p === L ? 'Resume Curriculum Lesson' : 'Resume Lesson'}</button>${back}</div>`;
   } else {
-    next = `<h2 class="h-sec">Lesson complete</h2><p class="ov-text">You confirmed all ${n} expressions. Tap any expression above to hear it again.</p>`;
+    next = `<div class="pv-ch"><h2 id="cont-h">Lesson complete</h2>${segs}<p>You confirmed all ${n} expressions. Tap any expression to hear it again.</p></div>
+      <div class="pv-btns">${back}</div>`;
   }
-  $app.innerHTML = `
-    <div class="backrow"><button class="btn ghost round-sm" onclick="show('dashboard')">${ic('left', 'sm')}Back</button><span class="tag green">${code}</span></div>
-    <div><h1 class="ov-title">${esc(L.title)}</h1><div class="muted" style="margin-top:4px">Module ${String(L.module).padStart(2, '0')} · ${esc(MODULE_NAMES[L.module])}</div></div>
-    <div class="card ov-card">
-      <div class="ov-h">${ic('chat')}Exact curriculum scenario</div>
-      <p class="ov-scen">${esc(L.scenario)}</p>
-      <div class="ov-stats"><div><b>${n}</b><span>Authored expressions</span></div><div><b class="ov-st">${stLabel}</b><span>Lesson status</span></div></div>
+  const scen = L.scenario.replace(/\s*\(context: [^)]*\)\s*$/, ''), ctx = (L.scenario.match(/\(context: ([^)]*)\)\s*$/) || [])[1];
+  $app.classList.add('wide');
+  $app.innerHTML = `<div class="pvw">
+    <div class="lintro">
+      <div class="backrow"><button class="btn ghost back" onclick="show('dashboard')">${ic('left', 'sm')}Back</button><span class="code-pill">${code.replace(' ', ' · ')}</span></div>
+      <div class="lhead"><h1 class="ltitle ov-title">${esc(L.title)}</h1><p class="pv-mod">Module ${String(L.module).padStart(2, '0')} · ${esc(MODULE_NAMES[L.module])}</p></div>
     </div>
-    <h2 class="h-sec">All ${n} expressions</h2>
-    <p class="ov-sub">Exact Arabic, English and Latin cues, in the authored curriculum order. Preview only — ${st === 'not_started' ? 'no expression is confirmed' : 'viewing this does not change your progress'}. Tap one to hear it.</p>
-    <div class="card ov-list">` +
-      L.ex.map(e => `<button class="ov-ex" onclick="speak(${esc(JSON.stringify(e.ar))})">
-        <span class="ov-n">${e.n}</span>
-        <span class="grow"><span class="ov-ar" dir="rtl" lang="ar">${esc(e.ar)}</span><span class="ov-lat">${esc(e.lat)}</span><span class="ov-en">${esc(e.en)}</span></span>
-        ${s?.confirmed.includes(e.n) ? `<span class="ov-ok">${ic('checkCircle', 'sm')}Confirmed</span>` : ''}</button>`).join('') +
-    `</div>
-    ${next}
-    <button class="btn ghost block lg round" onclick="show('dashboard')">${ic('left', 'sm')}Back to Dashboard</button>`;
+    <div class="pv">
+      <section class="card pv-scn" aria-labelledby="scn-h">
+        <div class="pv-scn-top">
+          <div class="pv-h"><span class="pv-ico">${ic('chat', 'sm')}</span><h2 id="scn-h">Exact curriculum scenario</h2></div>
+          <p class="pv-scen">${esc(scen)}</p>${ctx ? `<span class="ctx-chip">Context: ${esc(ctx)}</span>` : ''}
+        </div>
+        <div class="pv-stats">
+          <div><span>Authored expressions</span><b>${n}</b></div>
+          <div><span>Lesson status</span><span class="st-pill ${st}"><i aria-hidden="true"></i>${stLabel}</span></div>
+        </div>
+      </section>
+      <section class="pv-list" aria-labelledby="exprs-h">
+        <div class="pv-lh">
+          <div class="between wrap-row"><h2 id="exprs-h">All ${n} expressions</h2><span class="ctx-chip">${ic('eye', 'sm')}Preview only</span></div>
+          <p>Exact Arabic, English and Latin cues, in the authored curriculum order. ${st === 'not_started' ? 'No expression is confirmed yet' : 'Viewing this does not change your progress'}. Tap one to hear it.</p>
+        </div>
+        <div class="card exprs-card"><ol class="exprs">` +
+          L.ex.map(e => { const done = conf.includes(e.n), now = !done && e.n === cur;
+            return `<li><button type="button" class="expr" data-n="${e.n}" aria-pressed="false">
+              <span class="num${done ? ' done' : now ? ' now' : ''}">${e.n}</span>
+              <span class="expr-t"><span class="expr-top"><span class="expr-ar" lang="ar" dir="rtl">${esc(e.ar)}</span>${done ? `<span class="chip-ok">${ic('check')}Confirmed</span>` : now ? '<span class="chip-now">Current</span>' : ''}</span>
+                <span class="expr-lat">${esc(e.lat)}</span><span class="expr-en">${esc(e.en)}</span></span>
+              <span class="spk" aria-hidden="true">${ic('volume')}</span></button></li>`; }).join('') +
+        `</ol></div>
+      </section>
+      <section class="card pv-cont" aria-labelledby="cont-h">${next}</section>
+    </div></div>`;
+
+  // Tap an expression to hear it; its row stays highlighted while it plays.
+  const rows = [...$app.querySelectorAll('.expr')];
+  const lightRow = r => rows.forEach(x => { x.classList.toggle('on', x === r); x.setAttribute('aria-pressed', x === r); });
+  rows.forEach(r => r.onclick = () => {
+    const e = L.ex[+r.dataset.n - 1]; lightRow(r);
+    speak(e.ar, 0.85, t => { if (!t){ lightRow(null); return; } if (!/^(Playing|Starting|Getting)/.test(t)){ lightRow(null); toast(t); } });
+  });
 }
 
 // Shown above the next lesson. If that lesson finished its whole module, the module gets a green banner.
@@ -1086,69 +1234,83 @@ function search(){
 function progress(_, opts){
   const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length, d = S.completed.length;
   const hasKey = !!localStorage.getItem('gemini_key');
-  $app.innerHTML = `
-    <h1 class="title">Progress</h1>
-    <div class="stats">
-      <div class="stat"><span class="ico">${ic('cap')}</span><div><b>${d}</b><span>Complete</span></div></div>
-      <div class="stat sand"><span class="ico">${ic('flame')}</span><div><b>${ip}</b><span>In progress</span></div></div>
-      <div class="stat"><span class="ico">${ic('circle')}</span><div><b>${64 - d - ip}</b><span>Not started</span></div></div>
-    </div>
-    <div class="card">
-      <div class="between"><b>Modules</b><span class="muted small">${confirmedCount()} phrases confirmed</span></div>
-      ${[1,2,3,4,5,6,7,8].map(m => { const n = CURRICULUM.filter(l => l.module === m && isDone(l.id)).length;
-        return `<div class="between small" style="margin-top:12px"><span>Module ${m} · ${esc(MODULE_NAMES[m])}</span>${n === 8 ? `<span class="conf">${ic('check')}Complete</span>` : `<span class="muted">${n}/8</span>`}</div><div class="bar" style="margin-top:4px"><i style="width:${n / 8 * 100}%"></i></div>`; }).join('')}
-      <div class="hint" style="justify-content:flex-start;text-align:left;margin-top:14px">${ic('info', 'sm')}<span>Completion is your own confirmation (simplified learner-confirmed mode). Verified spoken passes: 0.</span></div>
+  const ph = confirmedCount();
+  const modRows = [1,2,3,4,5,6,7,8].map(m => {
+    const ls = CURRICULUM.filter(l => l.module === m), c = ls.filter(l => isDone(l.id)).length, p = ls.filter(l => status(l.id) === 'in_progress').length;
+    const mm = String(m).padStart(2, '0'), full = c === ls.length;
+    return `<div class="mrow${full ? ' done' : ''}"><span class="mnum${full ? ' done' : c || p ? ' active' : ''}"${full ? ` aria-label="Module ${mm} complete"` : ''}>${full ? ic('check') : mm}</span>
+      <div class="mrow-b"><div class="mrow-t"><span class="mrow-n">${esc(MODULE_NAMES[m])}</span>
+        <span class="mrow-c">${p ? `<span class="mrow-p">${p} in progress</span>` : ''}${full ? `<span class="conf">${ic('check')}Complete</span>` : `<span>${c}/${ls.length}</span>`}</span></div>
+        <div class="bar8" role="img" aria-label="${c} of ${ls.length} lessons complete${p ? `, ${p} in progress` : ''}">${ls.map(l => `<span class="${isDone(l.id) ? 'c' : status(l.id) === 'in_progress' ? 'p' : ''}"></span>`).join('')}</div></div></div>`; }).join('');
+  $app.classList.add('wide');
+  $app.innerHTML = `<div class="pgw">
+    <h1 class="ltitle">Progress</h1>
+    <div class="pg"><div class="pg-col">
+      <section class="pstats o1" aria-label="Lesson totals">
+        <div class="pstat"><span class="pst-ic">${ic('cap')}</span><div><b>${d}</b><span>Complete</span></div></div>
+        <div class="pstat sand"><span class="pst-ic">${ic('clock')}</span><div><b>${ip}</b><span>In progress</span></div></div>
+        <div class="pstat grey"><span class="pst-ic">${ic('circle')}</span><div><b>${64 - d - ip}</b><span>Not started</span></div></div>
+      </section>
+
+      <section class="card pcard o2" aria-labelledby="mods-h">
+        <div class="between wrap-row"><h2 id="mods-h">Modules</h2><span class="conf">${ic('check')}${ph} ${ph === 1 ? 'phrase' : 'phrases'} confirmed</span></div>
+        <div>${modRows}</div>
+        <div class="pfoot">${ic('info', 'sm')}<p>Completion is your own confirmation (simplified learner-confirmed mode). Verified spoken passes: 0.</p></div>
+      </section>
+
+      <section class="card pcard o6" id="installCard" aria-labelledby="a2hs-h"${isInstalled() ? ' hidden' : ''}>
+        <div class="tutor-head"><span class="tutor-ico green">${ic('phone')}</span>
+          <div class="grow"><h2 id="a2hs-h">Add to Home Screen</h2><p class="pdesc">Put the academy on your phone's home screen. It then opens full screen, like an app.</p></div></div>
+        <button class="btn primary" id="installBtn"${installPrompt ? '' : ' hidden'}>${ic('download', 'sm')}Add to Home Screen</button>
+        <div class="howto">
+          <div class="tint"><b>iPhone or iPad</b><p>In Safari, tap the Share button, then <b>Add to Home Screen</b>.</p></div>
+          <div class="tint"><b>Android</b><p>In Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</p></div>
+        </div>
+      </section>
     </div>
 
-    <div class="card" id="keycard">
-      <div class="tutor-head">
-        <span class="tutor-ico">${ic('key')}</span>
-        <div class="grow"><div class="between"><b>Tutor setup</b>${hasKey ? `<span class="tag green">Key saved</span>` : `<span class="tag">No key yet</span>`}</div>
-          <div class="muted small">The tutor is a live voice conversation powered by Google Gemini Live. It needs a free Google AI Studio API key, saved only in this browser. Google's free tier has usage limits. If this browser has no Arabic voice, Listen and Slowly also use this key to play Google's voice.</div></div>
-      </div>
-      ${opts?.askKey ? note('info', 'Add your Google API key to start talking with the tutor. Everything else in the app works without it.') : ''}
-      ${hasKey ? '' : `<a class="btn pale block lg round" id="getKey" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="margin-top:14px">${ic('external', 'sm')}Get a free Google key</a>
-        <div class="muted small" style="margin-top:8px;text-align:center">Opens Google AI Studio in a new tab. Sign in, tap <b>Create API key</b>, copy it, then come back and paste it below.</div>`}
-      <div class="compose" style="margin-top:14px"><input type="password" id="key" class="grow" placeholder="${hasKey ? 'Enter a new key to replace the saved one' : 'Paste your Google API key'}">
-      <button class="btn primary" id="saveKey">${ic('check', 'sm')}Save</button></div>
-    </div>
+    <div class="pg-col">
+      <section class="card pcard o3" id="keycard" aria-labelledby="tutor-h">
+        <div class="tutor-head"><span class="tutor-ico">${ic('key')}</span>
+          <div class="grow"><div class="between wrap-row"><h2 id="tutor-h">Tutor setup</h2>${hasKey ? `<span class="chip-ok">${ic('check')}Key saved</span>` : `<span class="tag">No key yet</span>`}</div>
+            <p class="pdesc">The tutor is a live voice conversation powered by Google Gemini Live. It needs a free Google AI Studio API key, saved only in this browser. Google's free tier has usage limits. If this browser has no Arabic voice, Listen and Slowly also use this key to play Google's voice.</p></div></div>
+        ${opts?.askKey ? note('info', 'Add your Google API key to start talking with the tutor. Everything else in the app works without it.') : ''}
+        ${hasKey ? '' : `<div><a class="btn pale block" id="getKey" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">${ic('external', 'sm')}Get a free Google key</a>
+          <p class="pdesc" style="margin-top:8px;text-align:center">Opens Google AI Studio in a new tab. Sign in, tap <b>Create API key</b>, copy it, then come back and paste it below.</p></div>`}
+        <div class="keyrow"><label class="sr" for="key">Google API key</label><input type="password" id="key" autocomplete="off" spellcheck="false" placeholder="${hasKey ? 'Enter a new key to replace the saved one' : 'Paste your Google API key'}">
+          <button class="btn primary" id="saveKey" disabled>${ic('check', 'sm')}Save</button></div>
+      </section>
 
-    <div class="card">
-      <b>Move to another device</b>
-      <p class="muted small" style="margin:4px 0 12px">Your progress saves automatically in this browser. To move it, copy this text and paste it on the other device.</p>
-      <textarea id="state" aria-label="Progress snapshot">ACADEMY_STATE_V9\n${esc(JSON.stringify(S))}</textarea>
-      <div class="row" style="margin-top:10px">
-        <button class="btn pale" id="copyState">${ic('copy', 'sm')}Copy</button>
-        <button class="btn ghost" id="importState">${ic('upload', 'sm')}Load pasted progress</button>
-        <button class="btn danger" id="reset">${ic('trash', 'sm')}Start over</button>
-      </div>
-      <div id="stateMsg"></div>
-    </div>
+      <section class="card pcard o4" aria-labelledby="move-h">
+        <div><h2 id="move-h">Move to another device</h2><p class="pdesc">Your progress saves automatically in this browser. To move it, copy this text and paste it on the other device.</p></div>
+        <label class="sr" for="state">Progress text</label>
+        <textarea id="state" class="code" spellcheck="false" autocomplete="off">ACADEMY_STATE_V9\n${esc(JSON.stringify(S))}</textarea>
+        <div class="row">
+          <button class="btn pale" id="copyState">${ic('copy', 'sm')}Copy</button>
+          <button class="btn ghost" id="importState">${ic('upload', 'sm')}Load pasted progress</button>
+          <button class="btn danger push" id="reset">${ic('trash', 'sm')}Start over</button>
+        </div>
+        <div id="stateMsg"></div>
+      </section>
 
-    <div class="card" id="backupCard">
-      <b>Daily backup</b>
-      <p class="muted small" style="margin:4px 0 12px">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so now and then save a backup file too.</p>
-      ${backups().length ? backups().map((b, i) => { const t = new Date(b.at);      // when the copy was actually made
-          const when = t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5);
-          const ph = Object.values(b.state.lessons || {}).reduce((a, x) => a + x.confirmed.length, 0);
-          return `<div class="between small bk-row"><span><b>Saved ${esc(when)}</b><br><span class="muted">${(b.state.completed || []).length}/64 lessons complete · ${ph} ${ph === 1 ? 'phrase' : 'phrases'} confirmed</span></span>
-            <button class="btn ghost sm" data-bk="${i}">${ic('retry', 'sm')}Restore</button></div>`; }).join('')
-        : `<p class="small muted" style="margin:0">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`}
-      <div class="row" style="margin-top:12px">
-        <button class="btn pale" id="saveFile">${ic('download', 'sm')}Save backup file</button>
-        <label class="btn ghost" for="loadFile">${ic('upload', 'sm')}Load backup file</label>
-        <input type="file" id="loadFile" accept=".txt,text/plain" hidden>
-      </div>
-      <div id="bkMsg"></div>
-    </div>
-
-    <div class="card" id="installCard"${isInstalled() ? ' hidden' : ''}>
-      <b>Add to Home Screen</b>
-      <p class="muted small" style="margin:4px 0 12px">Put the academy on your phone's home screen. It then opens full screen, like an app.</p>
-      <button class="btn primary" id="installBtn"${installPrompt ? '' : ' hidden'}>${ic('download', 'sm')}Add to Home Screen</button>
-      <p class="small" style="margin:12px 0 0"><b>iPhone or iPad:</b> in Safari, tap the Share button, then <b>Add to Home Screen</b>.<br>
-        <b>Android:</b> in Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</p>
-    </div>`;
+      <section class="card pcard o5" id="backupCard" aria-labelledby="backup-h">
+        <div><h2 id="backup-h">Daily backup</h2><p class="pdesc">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so now and then save a backup file too.</p></div>
+        ${backups().length ? `<div class="bk-list">` + backups().map((b, i) => { const t = new Date(b.at);      // when the copy was actually made
+            const when = t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5);
+            const bp = Object.values(b.state.lessons || {}).reduce((a, x) => a + x.confirmed.length, 0);
+            return `<div class="tint bk-row"><div><b>Saved ${esc(when)}</b><span>${(b.state.completed || []).length}/64 lessons complete · ${bp} ${bp === 1 ? 'phrase' : 'phrases'} confirmed</span></div>
+              <button class="btn ghost again" data-bk="${i}">${ic('retry', 'sm')}Restore</button></div>`; }).join('') + `</div>`
+          : `<p class="pdesc">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`}
+        <div class="row">
+          <button class="btn pale" id="saveFile">${ic('download', 'sm')}Save backup file</button>
+          <label class="btn ghost" for="loadFile">${ic('upload', 'sm')}Load backup file</label>
+          <input type="file" id="loadFile" accept=".txt,text/plain" hidden>
+        </div>
+        <div id="bkMsg"></div>
+      </section>
+    </div></div></div>`;
+  const keyIn = document.getElementById('key');
+  keyIn.oninput = () => document.getElementById('saveKey').disabled = !keyIn.value.trim();
   if (opts?.askKey) document.getElementById('keycard').scrollIntoView();
   const stateMsg = h => document.getElementById('stateMsg').innerHTML = h;
   document.getElementById('saveKey').onclick = () => {
@@ -1167,10 +1329,10 @@ function progress(_, opts){
 
   // Backups: restore a daily copy (tap twice), or save / load a backup file (same text as the snapshot above).
   const bkMsg = h => document.getElementById('bkMsg').innerHTML = h;
-  document.querySelectorAll('[data-bk]').forEach(b => b.onclick = () => {
-    if (!b.dataset.armed){ b.dataset.armed = '1'; b.innerHTML = ic('alert', 'sm') + 'Tap again to restore';
-      setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.innerHTML = ic('retry', 'sm') + 'Restore'; } }, 5000); return; }
-    const st = parseSnapshot(snapshotText(backups()[+b.dataset.bk].state));
+  document.querySelectorAll('[data-bk]').forEach(b => b.onclick = async () => {
+    const bk = backups()[+b.dataset.bk], when = b.closest('.bk-row').querySelector('b').textContent.replace(/^Saved /, '');
+    if (!await confirmModal({ title: 'Restore this backup?', text: `Your progress goes back to how it was on ${esc(when)}. Anything you did after that is replaced.`, yes: 'Yes, restore', icon: 'retry' })) return;
+    const st = parseSnapshot(snapshotText(bk.state));
     if (!st) return bkMsg(warn("That backup couldn't be read. Nothing was changed."));
     S = st; save(); show('dashboard'); toast('Progress restored from the daily backup.');
   });
@@ -1191,11 +1353,31 @@ function progress(_, opts){
     if (!installPrompt) return;
     installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; document.getElementById('installBtn').hidden = true;
   };
-  document.getElementById('reset').onclick = e => {      // two-step confirmation, no pop-up
-    const b = e.currentTarget;
-    if (!b.dataset.armed){ b.dataset.armed = '1'; b.innerHTML = ic('alert', 'sm') + 'Tap again to erase all progress'; setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.innerHTML = ic('trash', 'sm') + 'Start over'; } }, 5000); return; }
+  document.getElementById('reset').onclick = async () => {
+    if (!await confirmModal({ title: 'Start over?', text: 'This erases all progress saved in this browser: every completed lesson and confirmed phrase. Your daily backups are kept.', yes: 'Yes, start over', danger: true, icon: 'trash' })) return;
     S = freshState(); save(); show('dashboard'); toast('Progress erased. Starting from 0/64.');
   };
+}
+
+/* Confirmation pop-up for actions that replace or erase progress. Cancel has the focus, and the confirm
+   button only works after a short pause, so a double tap or a stray tap can't confirm by accident. */
+function confirmModal({ title, text, yes, danger = false, icon = 'alert' }){
+  return new Promise(resolve => {
+    const d = document.createElement('dialog');
+    d.className = 'modal'; d.setAttribute('aria-labelledby', 'mdl-t'); d.setAttribute('aria-describedby', 'mdl-d');
+    d.innerHTML = `<div class="mdl-in"><div class="mdl-ic${danger ? ' danger' : ''}">${ic(icon)}</div>
+      <h2 id="mdl-t">${title}</h2><p id="mdl-d">${text}</p>
+      <div class="mdl-btns"><button class="btn ghost" id="mdlNo">Cancel</button>
+        <button class="btn ${danger ? 'danger-solid' : 'primary'}" id="mdlYes" disabled>${yes}</button></div></div>`;
+    document.body.appendChild(d);
+    const done = v => { if (!d.open) return; d.close(); d.remove(); resolve(v); };
+    d.querySelector('#mdlNo').onclick = () => done(false);
+    d.querySelector('#mdlYes').onclick = () => done(true);
+    d.addEventListener('cancel', e => { e.preventDefault(); done(false); });        // Esc key / Android back
+    d.addEventListener('click', e => { if (e.target === d) done(false); });        // tap outside the box
+    d.showModal(); d.querySelector('#mdlNo').focus();
+    setTimeout(() => { const y = d.querySelector('#mdlYes'); if (y) y.disabled = false; }, 800);
+  });
 }
 
 function finished(){
