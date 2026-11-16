@@ -1280,6 +1280,8 @@ function progress(_, opts){
           <p class="pdesc" style="margin-top:8px;text-align:center">Opens Google AI Studio in a new tab. Sign in, tap <b>Create API key</b>, copy it, then come back and paste it below.</p></div>`}
         <div class="keyrow"><label class="sr" for="key">Google API key</label><input type="password" id="key" autocomplete="off" spellcheck="false" placeholder="${hasKey ? 'Enter a new key to replace the saved one' : 'Paste your Google API key'}">
           <button class="btn primary" id="saveKey" disabled>${ic('check', 'sm')}Save</button></div>
+        ${hasKey ? `<div><a class="btn ghost block" id="getKey" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">${ic('external', 'sm')}Get a new Google key</a>
+          <p class="pdesc" style="margin-top:8px;text-align:center">Opens Google AI Studio, where your keys are listed. Copy one and paste it above.</p></div>` : ''}
       </section>
 
       <section class="card pcard o4" aria-labelledby="move-h">
