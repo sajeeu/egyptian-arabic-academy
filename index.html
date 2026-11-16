@@ -487,6 +487,7 @@ div.result{cursor:default;flex-wrap:wrap}
 @keyframes eaa-soft{from{opacity:.35;transform:translateY(6px)}to{opacity:1;transform:none}}
 #app.enter{animation:eaa-page .22s ease-out}
 #app.enter [data-anim]{animation:eaa-in .42s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:min(calc(var(--i) * 45ms),495ms)}
+details.mod.opening .lesson-row{animation:eaa-in .32s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:min(calc(var(--i, 0) * 35ms), 280ms)}
 #app.enter-soft :is(.phrase,.lprog,.hero,.pv-cont){animation:eaa-soft .28s cubic-bezier(.2,.7,.2,1) backwards}
 @keyframes eaa-toast{from{opacity:0;transform:translate(-50%,14px)}to{opacity:1;transform:translate(-50%,0)}}
 .toast.pop{animation:eaa-toast .26s cubic-bezier(.2,.7,.2,1)}
@@ -1059,6 +1060,13 @@ function dashboard(){
   const syncBtn = () => { const vis = mods.filter(d => !d.hidden), all = vis.length > 0 && vis.every(d => d.open);
     eb.innerHTML = ic(all ? 'collapse' : 'expand', 'sm') + `<span>${all ? 'Collapse all' : 'Expand all'}</span>`; eb.disabled = !vis.length; };
   mods.forEach(d => d.addEventListener('toggle', syncBtn));
+  // Opening a module: its lesson rows cascade in (skipped when the device asks for reduced motion).
+  mods.forEach(d => d.addEventListener('toggle', () => {
+    if (!d.open) return;
+    [...d.querySelectorAll('.lesson-row:not([hidden])')].forEach((r, i) => r.style.setProperty('--i', i));
+    d.classList.remove('opening'); void d.offsetWidth; d.classList.add('opening');
+    clearTimeout(d._t); d._t = setTimeout(() => d.classList.remove('opening'), 700);
+  }));
   eb.onclick = () => { const vis = mods.filter(d => !d.hidden), open = !vis.every(d => d.open); vis.forEach(d => d.open = open); syncBtn(); };
   const runSearch = () => {
     const shown = qIn.value.trim(), q = shown.toLowerCase(), qn = q.replace(/[^a-z0-9]/g, '');
