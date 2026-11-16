@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Egyptian Arabic Academy</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#166B3F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Arabic Academy">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
@@ -256,6 +263,12 @@ textarea{min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:
 .searchbox input{padding-left:44px}
 .result{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 4px;cursor:pointer}
 .result:hover{background:var(--sunk)}
+div.result{cursor:default;flex-wrap:wrap}
+.r-open{flex:1 1 220px;min-width:0;text-align:left;background:none;border:0;padding:0;color:var(--ink);font:inherit;cursor:pointer}
+.r-play{display:flex;gap:8px;flex:none}
+.btn.sm{padding:8px 12px;font-size:14px;gap:6px}
+.btn.ghost.sm{border-color:var(--line-2)}
+.bk-row{border-top:1px solid var(--line);padding:10px 0}
 .result .ar{font-family:var(--font-ar);font-weight:700;direction:rtl;font-size:20px}
 
 /* Microphone banner */
@@ -328,6 +341,32 @@ function freshState(){ return { completed: [], lessons: {}, verified_spoken_pass
 let S = load();
 function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || freshState(); } catch { return freshState(); } }
 function save(){ S.last_updated = new Date().toISOString(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
+const snapshotText = st => `ACADEMY_STATE_V9\n${JSON.stringify(st)}`;
+// Check a pasted or saved snapshot; returns the state, or null if it isn't valid.
+function parseSnapshot(text){
+  try {
+    const obj = JSON.parse(String(text).replace(/^\s*ACADEMY_STATE_V9\s*/, ''));
+    const ok = (obj.completed || []).every(i => byId[i]) && Object.entries(obj.lessons || {}).every(([i, x]) =>
+      byId[i] && Number.isInteger(x.idx) && x.idx >= 1 && x.idx <= byId[i].ex.length && Array.isArray(x.confirmed));
+    return ok ? { ...freshState(), ...obj } : null;
+  } catch { return null; }
+}
+
+/* Daily backup: a copy of the progress is kept in this browser every day at 23:00 (the last 7 days).
+   A web page can't run while it is closed, so a missed 23:00 is caught up the next time the app opens;
+   nothing can change while it is closed, so that copy is the same as it was at 23:00. */
+const BKEY = 'egyptian_academy_backups';
+const backups = () => { try { return JSON.parse(localStorage.getItem(BKEY)) || []; } catch { return []; } };
+const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function dailyBackup(){
+  const now = new Date(), due = new Date(now);
+  if (now.getHours() < 23) due.setDate(due.getDate() - 1);           // the most recent 23:00 that has passed
+  const slot = dayKey(due), list = backups();
+  if (list[0]?.slot >= slot) return;                                 // already backed up for that 23:00
+  if (!S.completed.length && !Object.keys(S.lessons).length) return; // nothing to back up yet
+  list.unshift({ slot, at: now.toISOString(), state: S });
+  try { localStorage.setItem(BKEY, JSON.stringify(list.slice(0, 7))); } catch {}
+}
 
 const isDone = id => S.completed.includes(id);
 const status = id => isDone(id) ? 'complete' : (S.lessons[id] ? 'in_progress' : 'not_started');
@@ -604,6 +643,7 @@ const ICONS = {
   key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3"/><path d="m16 7 3 3"/><path d="m18.5 4.5 2 2"/>',
   copy: '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>',
   upload: '<path d="M12 15V3"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>',
+  download: '<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
   trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/>',
   cap: '<path d="M2 9 12 4l10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
@@ -911,15 +951,24 @@ function search(){
     </div>`;
   const q = document.getElementById('q'), res = document.getElementById('res');
   const norm = s => s.toLowerCase().replace(/[ً-ْ'’]/g, '');
+  let hits = [];
   q.oninput = () => {
     const t = norm(q.value.trim());
     if (!t){ res.innerHTML = 'Type to search all 321 phrases.'; return; }
-    const hits = [];
+    hits = [];
     for (const L of CURRICULUM) for (const e of L.ex) if ([e.ar, e.lat, e.en].some(x => norm(x).includes(t))) hits.push([L, e]);
+    // Each match: Listen and Slowly play it here; the rest opens the lesson overview (viewing never changes progress).
     res.innerHTML = hits.length ? `<div style="margin-bottom:6px">${hits.length} match${hits.length === 1 ? '' : 'es'}${hits.length > 60 ? ' (showing 60)' : ''}</div>` +
-      hits.slice(0, 60).map(([L, e]) => `<button class="result" onclick="show('lesson','${L.id}')">
-        <span class="grow" style="color:var(--ink)"><span class="ar" style="display:block">${esc(e.ar)}</span><b>${esc(e.lat)}</b> · ${esc(e.en)}</span>
-        <span class="tag">${label(L.id)} · ${e.n}</span></button>`).join('') : 'No matches.';
+      hits.slice(0, 60).map(([L, e], i) => `<div class="result">
+        <button class="r-open" data-i="${i}" aria-label="Open ${label(L.id)} overview: ${esc(e.en)}"><span class="ar" lang="ar" style="display:block">${esc(e.ar)}</span><b>${esc(e.lat)}</b> · ${esc(e.en)}
+          <span style="display:block;margin-top:6px"><span class="tag">${label(L.id)} · ${e.n}</span></span></button>
+        <span class="r-play"><button class="btn pale sm" data-i="${i}" data-rate="0.85" aria-label="Listen">${ic('volume', 'sm')}<span>Listen</span></button>
+          <button class="btn ghost sm" data-i="${i}" data-rate="0.55" aria-label="Listen slowly">${ic('slow', 'sm')}<span>Slowly</span></button></span></div>`).join('') : 'No matches.';
+  };
+  res.onclick = e => {
+    const b = e.target.closest('button[data-i]'); if (!b) return;
+    const [L, ex] = hits[+b.dataset.i];
+    if (b.dataset.rate) speak(ex.ar, +b.dataset.rate); else show('overview', L.id);
   };
 }
 
@@ -963,6 +1012,31 @@ function progress(_, opts){
         <button class="btn danger" id="reset">${ic('trash', 'sm')}Start over</button>
       </div>
       <div id="stateMsg"></div>
+    </div>
+
+    <div class="card" id="backupCard">
+      <b>Daily backup</b>
+      <p class="muted small" style="margin:4px 0 12px">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so now and then save a backup file too.</p>
+      ${backups().length ? backups().map((b, i) => { const t = new Date(b.at);      // when the copy was actually made
+          const when = t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5);
+          const ph = Object.values(b.state.lessons || {}).reduce((a, x) => a + x.confirmed.length, 0);
+          return `<div class="between small bk-row"><span><b>Saved ${esc(when)}</b><br><span class="muted">${(b.state.completed || []).length}/64 lessons complete · ${ph} ${ph === 1 ? 'phrase' : 'phrases'} confirmed</span></span>
+            <button class="btn ghost sm" data-bk="${i}">${ic('retry', 'sm')}Restore</button></div>`; }).join('')
+        : `<p class="small muted" style="margin:0">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`}
+      <div class="row" style="margin-top:12px">
+        <button class="btn pale" id="saveFile">${ic('download', 'sm')}Save backup file</button>
+        <label class="btn ghost" for="loadFile">${ic('upload', 'sm')}Load backup file</label>
+        <input type="file" id="loadFile" accept=".txt,text/plain" hidden>
+      </div>
+      <div id="bkMsg"></div>
+    </div>
+
+    <div class="card" id="installCard"${isInstalled() ? ' hidden' : ''}>
+      <b>Add to Home Screen</b>
+      <p class="muted small" style="margin:4px 0 12px">Put the academy on your phone's home screen. It then opens full screen, like an app.</p>
+      <button class="btn primary" id="installBtn"${installPrompt ? '' : ' hidden'}>${ic('download', 'sm')}Add to Home Screen</button>
+      <p class="small" style="margin:12px 0 0"><b>iPhone or iPad:</b> in Safari, tap the Share button, then <b>Add to Home Screen</b>.<br>
+        <b>Android:</b> in Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</p>
     </div>`;
   if (opts?.askKey) document.getElementById('keycard').scrollIntoView();
   const stateMsg = h => document.getElementById('stateMsg').innerHTML = h;
@@ -975,13 +1049,36 @@ function progress(_, opts){
     navigator.clipboard.writeText(ta.value).then(() => b.innerHTML = ic('check', 'sm') + 'Copied', () => { ta.select(); toast('Press Ctrl+C to copy the selected text.'); });
   };
   document.getElementById('importState').onclick = () => {
-    try {
-      const obj = JSON.parse(document.getElementById('state').value.replace(/^\s*ACADEMY_STATE_V9\s*/, ''));
-      const okIds = (obj.completed || []).every(i => byId[i]) && Object.entries(obj.lessons || {}).every(([i, x]) =>
-        byId[i] && Number.isInteger(x.idx) && x.idx >= 1 && x.idx <= byId[i].ex.length && Array.isArray(x.confirmed));
-      if (!okIds) throw 0;
-      S = { ...freshState(), ...obj }; save(); show('dashboard'); toast('Progress loaded.');
-    } catch { stateMsg(warn("That text isn't a valid progress snapshot. Nothing was changed.")); }
+    const st = parseSnapshot(document.getElementById('state').value);
+    if (!st) return stateMsg(warn("That text isn't a valid progress snapshot. Nothing was changed."));
+    S = st; save(); show('dashboard'); toast('Progress loaded.');
+  };
+
+  // Backups: restore a daily copy (tap twice), or save / load a backup file (same text as the snapshot above).
+  const bkMsg = h => document.getElementById('bkMsg').innerHTML = h;
+  document.querySelectorAll('[data-bk]').forEach(b => b.onclick = () => {
+    if (!b.dataset.armed){ b.dataset.armed = '1'; b.innerHTML = ic('alert', 'sm') + 'Tap again to restore';
+      setTimeout(() => { if (b.isConnected){ delete b.dataset.armed; b.innerHTML = ic('retry', 'sm') + 'Restore'; } }, 5000); return; }
+    const st = parseSnapshot(snapshotText(backups()[+b.dataset.bk].state));
+    if (!st) return bkMsg(warn("That backup couldn't be read. Nothing was changed."));
+    S = st; save(); show('dashboard'); toast('Progress restored from the daily backup.');
+  });
+  document.getElementById('saveFile').onclick = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([snapshotText(S)], { type: 'text/plain' }));
+    a.download = `egyptian-arabic-academy-backup-${dayKey(new Date())}.txt`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    bkMsg(note('check', 'Your backup file is downloading. Keep it somewhere safe, for example email it to yourself. To use it, tap <b>Load backup file</b>.'));
+  };
+  document.getElementById('loadFile').onchange = async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const st = parseSnapshot(await f.text()); e.target.value = '';
+    if (!st) return bkMsg(warn("That file isn't an Egyptian Arabic Academy backup. Nothing was changed."));
+    S = st; save(); show('dashboard'); toast('Progress loaded from the backup file.');
+  };
+  document.getElementById('installBtn').onclick = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt(); await installPrompt.userChoice; installPrompt = null; document.getElementById('installBtn').hidden = true;
   };
   document.getElementById('reset').onclick = e => {      // two-step confirmation, no pop-up
     const b = e.currentTarget;
@@ -1002,6 +1099,14 @@ document.getElementById('logoMark').innerHTML = ic('steth');
 const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], progress: ['chart', 'Progress'] };
 document.querySelectorAll('#nav button').forEach(b => { const [i, t] = NAV[b.dataset.v]; b.innerHTML = `<span class="tab-ic">${ic(i)}</span><span>${t}</span>`; b.onclick = () => show(b.dataset.v); });
 show('dashboard');
+dailyBackup(); setInterval(dailyBackup, 60000);                     // catch up a missed 23:00, then check every minute
+document.addEventListener('visibilitychange', () => { if (!document.hidden) dailyBackup(); });
+
+/* Add to Home Screen: Android Chrome offers its own install prompt, which the Progress page can show. */
+let installPrompt = null;
+const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installPrompt = e; const c = document.getElementById('installBtn'); if (c) c.hidden = false; });
+addEventListener('appinstalled', () => { installPrompt = null; const c = document.getElementById('installCard'); if (c) c.hidden = true; });
 
 /* ---------- Microphone permission ----------
    "Say it" and the voice tutor need the microphone. The app asks when it opens and shows a banner while it is off. */
