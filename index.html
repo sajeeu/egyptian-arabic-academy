@@ -487,6 +487,7 @@ div.result{cursor:default;flex-wrap:wrap}
 
 /* Footer */
 .foot{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0 16px 28px;font-size:13px;color:var(--muted)}
+.foot.off>*{display:none}   /* "Powered by" shows only on Settings; the footer's bottom space stays so pages clear the tab bar */
 .foot button{background:none;border:0;padding:6px 10px;color:var(--muted);cursor:pointer;font-weight:600}
 .foot button:hover{color:var(--ink)}
 .foot a{color:var(--pale-ink);font-weight:700}
@@ -948,6 +949,7 @@ function show(view, id, opts = {}){
   $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
   ({ dashboard, lesson, overview, search, progress, finished }[view])(id, opts);
   renderAppBar();                                               // the install / iPhone banner follows the current progress
+  document.querySelector('.foot').classList.toggle('off', view !== 'progress');   // "Powered by" only on the Settings tab
   // Next card of the same lesson, in the one-column layout: open at the "Phrase x of y" line, so the phrase and the
   // Complete buttons are on screen without scrolling. Everything else opens at the top.
   const lp = view === 'lesson' && lastPage === view + '|' + (id || '') && !matchMedia('(min-width:1000px)').matches && $app.querySelector('.lprog');
