@@ -444,8 +444,9 @@ textarea{min-height:110px;font-family:ui-monospace,Consolas,monospace;font-size:
 
 /* Search */
 .searchbox{position:relative}
-.searchbox .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
-.searchbox input{padding-left:44px}
+.searchbox>.ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.searchbox input{padding-left:44px;padding-right:50px}
+.searchbox .sclear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px}
 .result{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:12px 4px;cursor:pointer}
 .result:hover{background:var(--sunk)}
 div.result{cursor:default;flex-wrap:wrap}
@@ -1218,7 +1219,8 @@ function lesson(id, opts){
 function search(){
   $app.innerHTML = `<h1 class="title">Search phrases</h1>
     <div class="card">
-      <div class="searchbox">${ic('search')}<input type="text" id="q" placeholder="Search Arabic, pronunciation or English…" autofocus></div>
+      <div class="searchbox">${ic('search')}<input type="text" id="q" placeholder="Search Arabic, pronunciation or English…" autofocus>
+        <button type="button" class="mclear sclear" id="qclear" aria-label="Clear search" hidden>${ic('xmark')}</button></div>
       <div id="res" class="small muted" style="margin-top:12px"></div>
     </div>`;
   const q = document.getElementById('q'), res = document.getElementById('res');
@@ -1230,8 +1232,12 @@ function search(){
     Object.entries(COMMON).map(([g, ws]) => `<div class="chip-group"><b>${g}</b><div class="chips">${ws.map(w => `<button type="button" class="chip" data-w="${esc(w)}">${esc(w)}</button>`).join('')}</div></div>`).join('');
   let hits = [];
   res.innerHTML = chips();
+  // X clears the search and goes back to the common words (without opening the keyboard).
+  const qclear = document.getElementById('qclear');
+  qclear.onclick = () => { q.value = ''; q.oninput(); q.blur(); window.scrollTo(0, 0); };
   q.oninput = () => {
     const t = norm(q.value.trim());
+    qclear.hidden = !q.value;
     if (!t){ res.innerHTML = chips(); return; }
     hits = [];
     for (const L of CURRICULUM) for (const e of L.ex) if ([e.ar, e.lat, e.en].some(x => norm(x).includes(t))) hits.push([L, e]);
