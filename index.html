@@ -339,7 +339,22 @@ const modTitle = ['', '', '', '', '', '', '', '', '']; // curriculum defines no 
 
 function freshState(){ return { completed: [], lessons: {}, verified_spoken_passes: 0, mode: 'simplified_learner_confirmed' }; }
 let S = load();
-function load(){ try { return JSON.parse(localStorage.getItem(KEY)) || freshState(); } catch { return freshState(); } }
+function load(){ let st = null; try { st = JSON.parse(localStorage.getItem(KEY)); } catch {} return repair(st || freshState()); }
+/* Keeps saved progress usable after an app update: if a lesson ever gets fewer phrases, positions are kept in range,
+   and progress for a lesson ID that no longer exists is set aside in "retired" (never thrown away). */
+function repair(st){
+  st = { ...freshState(), ...st, lessons: { ...(st.lessons || {}) }, retired: { ...(st.retired || {}) } };
+  for (const i of st.completed || []) if (!byId[i]) st.retired[i] = 'completed';
+  st.completed = [...new Set((st.completed || []).filter(i => byId[i]))];
+  for (const [id, x] of Object.entries(st.lessons)){
+    if (!byId[id] || !x || typeof x !== 'object'){ st.retired[id] = x; delete st.lessons[id]; continue; }
+    const n = byId[id].ex.length;
+    const confirmed = [...new Set((Array.isArray(x.confirmed) ? x.confirmed : []).filter(c => Number.isInteger(c) && c >= 1 && c <= n))];
+    st.lessons[id] = { ...x, confirmed, idx: Math.min(Math.max(Number.isInteger(x.idx) ? x.idx : 1, 1), n) };
+  }
+  if (!Object.keys(st.retired).length) delete st.retired;
+  return st;
+}
 function save(){ S.last_updated = new Date().toISOString(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }
 const snapshotText = st => `ACADEMY_STATE_V9\n${JSON.stringify(st)}`;
 // Check a pasted or saved snapshot; returns the state, or null if it isn't valid.
