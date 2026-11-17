@@ -274,6 +274,10 @@ button.m9-modrow{display:flex;align-items:center;gap:14px;width:100%;padding:14p
 /* Module guide: each communication pattern is a collapsible row inside one card */
 .m9-pats .m9-acc-head{padding:12px 0;border-radius:12px}
 .m9-pats .m9-acc-body{margin:0;padding:2px 0 14px;border-top:0}
+/* Module guide: every section is a collapsible card; nothing inside a closed section can show or take focus */
+.m9-open > h2 > .m9-acc-head .m9-chev{transform:rotate(180deg)}
+.m9-sec > h2 .m9-acc-head{text-wrap:pretty}   /* headings balance their lines; the one-line summary should fill the width */
+.m9-sec:not(.m9-open) .m9-acc-in{visibility:hidden;transition:visibility 0s linear .3s}
 /* Search: who speaks a Module 09 line */
 .m9-swho{display:inline-flex;align-items:center;min-height:22px;padding:0 9px;border-radius:99px;font-size:12px;font-weight:800;margin-right:6px}
 .m9-swho.you{background:var(--pale);color:var(--pale-ink)}

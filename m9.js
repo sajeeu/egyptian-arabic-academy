@@ -49,7 +49,7 @@ function m9Track(n, idx, confirmed, scenesOf){
 }
 
 /* ---------- Shell: render, clicks, audio, first-open note ---------- */
-var m9Says = [], m9Open = null, m9LabOpen = {}, m9CaseOpen = {}, m9PatOpen = {};
+var m9Says = [], m9Open = null, m9LabOpen = {}, m9CaseOpen = {}, m9PatOpen = {}, m9SecOpen = {};
 function m9Render(html, cls = '', style = ''){
   m9Says = [];
   $app.classList.add('wide');
@@ -69,7 +69,7 @@ function m9Click(e){
   if (acc){
     const card = acc.closest('.m9-accbox') || acc.closest('.m9-card'), open = card.classList.toggle('m9-open'), [kind, key] = acc.dataset.acc.split(':');
     acc.setAttribute('aria-expanded', open);
-    ({ unit: m9Open, lab: m9LabOpen, case: m9CaseOpen, pat: m9PatOpen }[kind])[key] = open;
+    ({ unit: m9Open, lab: m9LabOpen, case: m9CaseOpen, pat: m9PatOpen, sec: m9SecOpen }[kind])[key] = open;
   }
 }
 function m9Go(v, id){
@@ -413,48 +413,42 @@ function m9Lab(){
 
 /* ---------- Module guide ---------- */
 function m9Guide(section){
+  if (section) m9SecOpen[section] = true;
   const G = M9.guide, ticks = new Set((S.m9 && S.m9.ticks) || []), hasKey = !!localStorage.getItem('gemini_key');
   const md = s => esc(s).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-  // Section links: the same list card as the Module 09 page (one row per section, icon, arrow down).
-  const jump = (id, t, icon, tone = '') => `<button type="button" class="lrow" data-jump="${id}"><span class="tile sm${tone}">${m9i(icon, 16)}</span><span class="grow lt">${t}</span><span class="chevr">${m9i('chevd', 18)}</span></button>`;
+  // Every section is a collapsible card (closed to start); patterns and cases are smaller collapsibles inside theirs.
+  const sec = (id, title, sub, icon, tone, body) => { const open = !!m9SecOpen[id];
+    return `<section class="card accbox sec ${open ? 'open' : ''}" id="m9-${id}" aria-labelledby="${id}-h"><h2 style="font: inherit"><button type="button" class="acc-head" aria-expanded="${open}" data-acc="sec:${id}">
+      <span class="tile sm${tone}">${m9i(icon, 16)}</span><span class="grow stack g2"><span class="ut" id="${id}-h">${title}</span><span class="xs"${id === 'check' ? ' id="m9ticked"' : ''}>${sub}</span></span><span class="chev">${m9i('chevd', 18)}</span></button></h2>
+      <div class="acc"><div class="acc-in"><div class="acc-body stack g12">${body}</div></div></div></section>`; };
   m9Render(`${m9Head('Module 09', 'm9', '<span class="pill green">Module 09</span>')}
     <h1 class="h1">Module guide</h1>
-    <div role="navigation" class="card divide" aria-label="Guide sections" style="padding: 6px">${jump('reg', 'Register and gender', 'users')}${jump('pat', 'Communication patterns', 'list')}${jump('cases', 'Practice cases', 'steth')}${jump('check', 'Mastery checklist', 'check')}${jump('safety', 'Safety and scope', 'shield', ' amber')}</div>
-    <section class="card pad stack g12" id="m9-reg" aria-labelledby="reg-h">
-      <div class="stack g6"><h2 class="h2" id="reg-h">Register and gender quick guide</h2><p class="sm">${esc(G.register.intro)}</p></div>
+    ${sec('reg', 'Register and gender', 'Female and male forms, with examples', 'users', '', `<p class="sm">${esc(G.register.intro)}</p>
       <div class="divide">${G.register.rows.map(r => `<div class="reg"><div class="stack"><span class="eyebrow">Female form</span><span class="ar" lang="ar" dir="rtl">${esc(r.f)}</span></div>
         <div class="stack"><span class="eyebrow">Male form</span><span class="ar" lang="ar" dir="rtl">${esc(r.m)}</span></div><p class="m sm" style="color: var(--ink)">${esc(r.note)}</p></div>`).join('')}</div>
       <h3 class="h3">Register examples</h3>
-      <ul class="cols2">${G.register.examples.map(x => `<li class="inset stack g4"><span class="pill" style="align-self: flex-start">${esc(x.label)}</span><span class="ar ar-sm" lang="ar" dir="rtl">${esc(x.ar)}</span><span class="tl">${esc(x.lat)}</span><span class="en">${esc(x.en)}</span></li>`).join('')}</ul>
-    </section>
-    <section class="card pad stack g8 pats" id="m9-pat" aria-labelledby="pat-h"><div class="stack g6"><h2 class="h2" id="pat-h">Communication patterns</h2>
-      <p class="sm">A simple order of steps for common conversations with families. Follow it so you don't miss anything important and the family can follow you. Tap a pattern to see its steps.</p></div>
-      <div class="divide">${G.patterns.map((p, k) => { const open = !!m9PatOpen[k], steps = p.text.split(p.text.includes(' → ') ? ' → ' : '; ');
+      <ul class="cols2">${G.register.examples.map(x => `<li class="inset stack g4"><span class="pill" style="align-self: flex-start">${esc(x.label)}</span><span class="ar ar-sm" lang="ar" dir="rtl">${esc(x.ar)}</span><span class="tl">${esc(x.lat)}</span><span class="en">${esc(x.en)}</span></li>`).join('')}</ul>`)}
+    ${sec('pat', 'Communication patterns', `${G.patterns.length} patterns for common conversations`, 'list', '', `<p class="sm">A simple order of steps for common conversations with families. Follow it so you don't miss anything important and the family can follow you. Tap a pattern to see its steps.</p>
+      <div class="divide pats">${G.patterns.map((p, k) => { const open = !!m9PatOpen[k], steps = p.text.split(p.text.includes(' → ') ? ' → ' : '; ');
         return `<div class="accbox ${open ? 'open' : ''}"><h3 style="font: inherit"><button type="button" class="acc-head" aria-expanded="${open}" data-acc="pat:${k}">
           <span class="grow stack g2"><span class="h3">${esc(p.title)}</span><span class="xs">${steps.length} steps</span></span><span class="chev">${m9i('chevd', 18)}</span></button></h3>
-          <div class="acc"><div class="acc-in"><div class="acc-body"><ol class="steps">${steps.map((t, i) => `<li class="step"><b>${i + 1}</b><span>${esc(t)}</span></li>`).join('')}</ol></div></div></div></div>`; }).join('')}</div></section>
-    <section class="stack g12" id="m9-cases" aria-labelledby="cases-h">
-      <div class="stack g6"><h2 class="h2" id="cases-h">Practice cases</h2><p class="sm">${md(G.casesIntro)}</p></div>
-      ${G.cases.map(c => { const open = !!m9CaseOpen[c.id];
-        return `<div class="card ${open ? 'open' : ''}"><h3 style="font: inherit"><button type="button" class="acc-head" aria-expanded="${open}" data-acc="case:${c.id}">
+          <div class="acc"><div class="acc-in"><div class="acc-body"><ol class="steps">${steps.map((t, i) => `<li class="step"><b>${i + 1}</b><span>${esc(t)}</span></li>`).join('')}</ol></div></div></div></div>`; }).join('')}</div>`)}
+    ${sec('cases', 'Practice cases', `${G.cases.length} cases to practise with your tutor`, 'steth', '', `<p class="sm">${md(G.casesIntro)}</p>
+      <div class="divide pats">${G.cases.map(c => { const open = !!m9CaseOpen[c.id];
+        return `<div class="accbox ${open ? 'open' : ''}"><h3 style="font: inherit"><button type="button" class="acc-head" aria-expanded="${open}" data-acc="case:${c.id}">
           <span class="ccode">${c.id}</span><span class="grow stack"><span class="eyebrow">Case ${c.id}</span><span class="b" style="font-size: 16px; line-height: 1.3">${esc(c.title)}</span></span><span class="chev">${m9i('chevd', 18)}</span></button></h3>
           <div class="acc"><div class="acc-in"><div class="acc-body stack g12"><p style="font-size: 15px; line-height: 1.55; padding-top: 4px">${esc(c.text)}</p>
             <div class="row wrap g10"><button type="button" class="btn soft sm" data-case="${c.id}">${m9i('headset', 16)}Practise with your tutor</button><span class="pill">Optional</span></div>
-            <div data-casebox="${c.id}"></div></div></div></div></div>`; }).join('')}</section>
-    <section class="card pad stack g12" id="m9-check" aria-labelledby="check-h">
-      <div class="row between wrap g8"><div class="stack g2"><h2 class="h2" id="check-h">Mastery checklist</h2><span class="xs">Language practice, not clinical credentialing</span></div><span class="pill green" id="m9ticked">${ticks.size} of ${G.checklist.length} ticked</span></div>
-      <ul class="stack g2">${G.checklist.map((t, i) => `<li><button type="button" class="chk" role="checkbox" aria-checked="${ticks.has(i)}" data-tick="${i}"><span class="box">${m9i('check', 16)}</span><span>${esc(t)}</span></button></li>`).join('')}</ul></section>
-    <section class="card pad stack g16" id="m9-safety" aria-labelledby="safety-h">
-      <div class="row g12"><span class="tile amber">${m9i('shield', 22)}</span><h2 class="h2" id="safety-h">Safety and scope</h2></div>
-      <p style="font-size: 15px; line-height: 1.6">${md(M9.intro.safety)}</p>
+            <div data-casebox="${c.id}"></div></div></div></div></div>`; }).join('')}</div>`)}
+    ${sec('check', 'Mastery checklist', `${ticks.size} of ${G.checklist.length} ticked`, 'check', '', `<span class="xs">Language practice, not clinical credentialing</span>
+      <ul class="stack g2">${G.checklist.map((t, i) => `<li><button type="button" class="chk" role="checkbox" aria-checked="${ticks.has(i)}" data-tick="${i}"><span class="box">${m9i('check', 16)}</span><span>${esc(t)}</span></button></li>`).join('')}</ul>`)}
+    ${sec('safety', 'Safety and scope', 'Language practice, not a clinical protocol', 'shield', ' amber', `<p style="font-size: 15px; line-height: 1.6">${md(M9.intro.safety)}</p>
       <p style="font-size: 15px; line-height: 1.6">${md(G.review)}</p>
       <div class="stack g6"><h3 class="h3">Background reference reading</h3><span class="xs">Not incorporated treatment protocols</span></div>
-      <ul class="divide">${G.references.map(f => `<li><a class="ref" href="${esc(f.url)}" target="_blank" rel="noopener"><span class="grow stack"><span class="b" style="font-size: 15px; line-height: 1.35">${esc(f.title.replace(/\*\*/g, ''))}</span><span class="xs">${esc(f.org)}${f.note ? ' · ' + md(f.note) : ''}</span></span>${m9i('ext', 18)}</a></li>`).join('')}</ul>
-    </section>`, 'narrow');
+      <ul class="divide">${G.references.map(f => `<li><a class="ref" href="${esc(f.url)}" target="_blank" rel="noopener"><span class="grow stack"><span class="b" style="font-size: 15px; line-height: 1.35">${esc(f.title.replace(/\*\*/g, ''))}</span><span class="xs">${esc(f.org)}${f.note ? ' · ' + md(f.note) : ''}</span></span>${m9i('ext', 18)}</a></li>`).join('')}</ul>`)}`, 'narrow');
   const root = $app.firstElementChild;
   const jumpTo = id => { const el = document.getElementById('m9-' + id); if (el) window.scrollTo(0, el.getBoundingClientRect().top + scrollY - document.querySelector('.top').offsetHeight - 12); };
   root.addEventListener('click', e => {
-    const j = e.target.closest('[data-jump]'); if (j) return jumpTo(j.dataset.jump);
     const t = e.target.closest('[data-tick]');
     if (t){
       const i = +t.dataset.tick, set = new Set((S.m9 && S.m9.ticks) || []);
