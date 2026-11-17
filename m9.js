@@ -204,7 +204,7 @@ function m9Overview(){
         <p class="note">${m9i('info', 16)}<span>One bar segment per unit. Each unit has 4 lessons.</span></p></section>
       ${nextCard}
       <div role="navigation" class="card divide" aria-label="Module 09 extras" style="padding: 6px">
-        <button type="button" class="lrow" data-go="m9lab"><span class="tile sm">${m9i('chat', 16)}</span><span class="grow stack"><span class="lt">Conversation Lab</span><span class="xs">${M9.lab.length} short dialogues</span></span><span class="chevr">${m9i('chevr', 18)}</span></button>
+        <button type="button" class="lrow" data-go="m9lab"><span class="tile sm">${m9i('chat', 16)}</span><span class="grow stack"><span class="lt">Conversation Lab</span><span class="xs">${M9.lab.length} short dialogues · extra practice</span></span><span class="chevr">${m9i('chevr', 18)}</span></button>
         <button type="button" class="lrow" data-go="m9guide"><span class="tile sm">${m9i('book', 16)}</span><span class="grow stack"><span class="lt">Module guide</span><span class="xs">Register and gender · patterns · practice cases · checklist</span></span><span class="chevr">${m9i('chevr', 18)}</span></button>
         <button type="button" class="lrow" data-go="m9guide:safety"><span class="tile sm amber">${m9i('shield', 16)}</span><span class="grow stack"><span class="lt">Safety and scope</span><span class="xs">Language practice, not a clinical protocol</span></span><span class="chevr">${m9i('chevr', 18)}</span></button>
       </div></div>
