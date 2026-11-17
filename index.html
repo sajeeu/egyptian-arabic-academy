@@ -352,6 +352,9 @@ details .list{padding:0 0 10px}
 /* Progress (redesign): one column on phones; two columns from 1000px */
 .pg{display:flex;flex-direction:column;gap:16px}
 .pg-col{display:contents}
+/* On a phone the cards are reordered (o1-o6), so the browser's scroll anchoring can hold a card that is really
+   below the one being opened, and the page jumps: the opened card's title slides off the top. Turn it off here. */
+.pgw{overflow-anchor:none}
 .o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o6{order:6}
 @container page (min-width:1000px){ .pg{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:24px;align-items:start} .pg-col{display:flex;flex-direction:column;gap:16px;min-width:0} }
 /* Settings: the progress card. Lessons complete leads; the bar shows complete (green) and in progress (amber). */
