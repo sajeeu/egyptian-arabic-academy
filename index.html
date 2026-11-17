@@ -354,7 +354,7 @@ details .list{padding:0 0 10px}
 .pg-col{display:contents}
 .o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o6{order:6}
 @container page (min-width:1000px){ .pg{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:24px;align-items:start} .pg-col{display:flex;flex-direction:column;gap:16px;min-width:0} }
-/* Home: one progress card. Lessons complete leads; the bar shows complete (green) and in progress (amber). */
+/* Settings: the progress card. Lessons complete leads; the bar shows complete (green) and in progress (amber). */
 .ov{display:flex;flex-direction:column;gap:14px;padding:18px 20px}
 .ov-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .ov-k{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
@@ -983,10 +983,9 @@ function animatePage(view, id){
 }
 
 function dashboard(){
-  const p = primary(), done = S.completed.length;
+  const p = primary();
   if (!p) return finished();
   const ps = status(p.id), pst = S.lessons[p.id];
-  const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length;
   // Where a lesson stands: current expression, confirmed count and the next phrase (straight from the curriculum).
   const pos = l => { const s = S.lessons[l.id], idx = s ? s.idx : 1, conf = s ? s.confirmed : [], n = conf.length;
     return { idx, n, ex: l.ex[idx - 1],
@@ -998,7 +997,7 @@ function dashboard(){
   const code = id => label(id).replace(' ', ' · ');
   const pp = pos(p);
 
-  // Left column: the curriculum lesson (always first), other lessons in progress, then the stats.
+  // Left column: the curriculum lesson (always first), then other lessons in progress.
   let a = `
     <h2 class="hd">Continue learning</h2>
     <article class="card hero"><div class="hero-grid">
@@ -1027,16 +1026,7 @@ function dashboard(){
         <button class="btn pale block lg" onclick="show('lesson','${l.id}')">${ic('playCircle')}Resume Lesson</button>
       </article>`; }).join('');
   }
-  a += `
-    <section class="card ov" aria-label="Your progress">
-      <div class="ov-top"><span class="ov-k">Your progress</span><span class="ov-pct">${Math.round(done * 100 / N_LESSONS)}%</span></div>
-      <div class="ov-main"><b>${done}</b><small>/ ${N_LESSONS}</small><span>lessons complete</span></div>
-      <div class="ov-bar" role="img" aria-label="${done} of ${N_LESSONS} lessons complete, ${ip} in progress">${done ? `<i class="c" style="width:max(8px,${done * 100 / N_LESSONS}%)"></i>` : ''}${ip ? `<i class="p" style="width:max(8px,${ip * 100 / N_LESSONS}%)"></i>` : ''}</div>
-      <div class="ov-row">
-        <div class="ov-it"><b>${ip}</b><span><i aria-hidden="true"></i>In progress</span></div>
-        <div class="ov-it"><b>${confirmedCount()}</b><span>${ic('check')}Phrases confirmed</span></div>
-      </div>
-    </section>`;
+  // The progress totals live on Settings only.
 
   // Right column: every module and lesson, with search and expand/collapse.
   const stCls = { complete: 'c', in_progress: 'p', not_started: 'n' }, stText = { complete: 'Complete', in_progress: 'In progress', not_started: 'Not started' };
