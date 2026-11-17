@@ -1324,7 +1324,8 @@ function search(){
   const norm = s => s.toLowerCase().replace(/[ً-ْ'’]/g, '');
   // Common searches shown while the box is empty. Each one matches phrases in the curriculum (checked in regression.js).
   const COMMON = { 'Everyday': ['hello', 'good morning', 'how are you', 'thank you', 'please', 'sorry', 'where is', 'how much', 'today', 'wait', 'understand', 'repeat', 'slowly'],
-    'At the hospital': ['doctor', 'nurse', 'patient', 'pain', 'medicine', 'blood', 'pressure', 'temperature', 'fever', 'test', 'results', 'head', 'stomach', 'x-ray', 'emergency'] };
+    'At the hospital': ['doctor', 'nurse', 'patient', 'pain', 'medicine', 'blood', 'pressure', 'temperature', 'fever', 'test', 'results', 'head', 'stomach', 'x-ray', 'emergency'],
+    ...(HAS_M9 ? { 'Pediatrics': ['baby', 'child', 'my son', 'daughter', 'feeding', 'diaper', 'weight', 'vaccine', 'cough', 'vomiting', 'diarrhea', 'rash', 'asthma', 'inhaler', 'seizure'] } : {}) };
   const chips = () => `<p class="chips-intro">Type to search all ${N_PHRASES} phrases, or tap a common word:</p>` +
     Object.entries(COMMON).map(([g, ws]) => `<div class="chip-group"><b>${g}</b><div class="chips">${ws.map(w => `<button type="button" class="chip" data-w="${esc(w)}">${esc(w)}</button>`).join('')}</div></div>`).join('');
   let hits = [];
