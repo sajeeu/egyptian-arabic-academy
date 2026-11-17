@@ -402,9 +402,9 @@ function m9Vocab(n){
 
 /* ---------- Conversation Lab (optional; never counts towards the module) ---------- */
 function m9Lab(){
-  m9Render(() => `${m9Head('Module 09', 'm9', '<span class="pill">Optional</span>')}
+  m9Render(() => `${m9Head('Module 09', 'm9', '')}
     <div class="stack g8"><h1 class="h1">Conversation Lab</h1><p class="sm">${esc(M9.guide.labIntro).replace(/\*\*(.*?)\*\*/g, '$1')}</p>
-      <p class="note">${m9i('info', 16)}<span>Optional extra practice. These dialogues do not count towards completing Module 09.</span></p></div>
+      <p class="note">${m9i('info', 16)}<span>Extra practice to help you follow real conversations and answer with confidence.</span></p></div>
     <div class="stack g10">${M9.lab.map(D => { const code = 'B' + m9pad(D.lab), open = !!m9LabOpen[code];
       return `<div class="card ${open ? 'open' : ''}"><h3 style="font: inherit"><button type="button" class="acc-head" aria-expanded="${open}" data-acc="lab:${code}">
         <span class="bcode">${code}</span><span class="grow stack g2"><span class="ut">${esc(D.title)}</span><span class="xs">${esc(D.speakers)} · ${esc(D.arc)}</span></span>
