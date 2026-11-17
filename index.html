@@ -83,12 +83,6 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .bar{height:8px;background:var(--sunk);border-radius:99px;overflow:hidden}
 .bar>i{display:block;height:100%;background:var(--green);border-radius:99px}
 .bar.mini{width:64px;height:6px}
-.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;gap:10px;align-items:center;box-shadow:var(--shadow)}
-.stat .ico{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:var(--pale);color:var(--pale-ink);flex:none}
-.stat.sand .ico{background:var(--sand-pale);color:var(--sand)}
-.stat b{display:block;font-size:20px;line-height:1.1;font-variant-numeric:tabular-nums}
-.stat span{font-size:12px;color:var(--muted);font-weight:600}
 .ring{flex:none}
 .ring circle{fill:none;stroke-width:6}
 .ring .bg{stroke:var(--sunk)} .ring .fg{stroke:var(--green);stroke-linecap:round;transform:rotate(-90deg);transform-origin:center}
@@ -144,13 +138,6 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .sc-meta{font-size:13px;color:var(--muted);margin-top:2px}
 .sub .segs{margin-top:8px}
 .sc-next{font-size:14px;color:var(--ink-2)} .sc-next .ar{font-family:"Noto Naskh Arabic",var(--font-ar);font-weight:700;font-size:20px;color:var(--ink)}
-.home .stats{gap:12px}
-.home .stat{flex-direction:column;align-items:flex-start;gap:12px;padding:14px;border-radius:18px;box-shadow:none}
-.home .stat .ico{width:32px;height:32px;border-radius:10px}
-.home .stat .ico .ic{width:18px;height:18px}
-.home .stat b{font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
-.home .stat b small{font-size:14px;font-weight:700;letter-spacing:0;color:var(--muted)}
-.home .stat div>span{display:block;margin-top:2px;font-size:12.5px;font-weight:600;line-height:1.35;color:var(--ink-2)}
 .btn.round{border-radius:99px;margin-top:18px}
 
 /* Lesson overview */
@@ -367,6 +354,25 @@ details .list{padding:0 0 10px}
 .pg-col{display:contents}
 .o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o6{order:6}
 @container page (min-width:1000px){ .pg{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:24px;align-items:start} .pg-col{display:flex;flex-direction:column;gap:16px;min-width:0} }
+/* Home: one progress card. Lessons complete leads; the bar shows complete (green) and in progress (amber). */
+.ov{display:flex;flex-direction:column;gap:14px;padding:18px 20px}
+.ov-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.ov-k{font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.ov-pct{font-size:13px;font-weight:800;color:var(--pale-ink);font-variant-numeric:tabular-nums}
+.ov-main{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px;margin-top:-6px}
+.ov-main b{font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums}
+.ov-main span{font-size:15px;font-weight:600;color:var(--ink-2)}
+.ov-main small{font-size:15px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
+.ov-bar{display:flex;gap:3px;height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.ov-bar i{display:block;height:100%;border-radius:99px;flex:none}
+.ov-bar .c{background:var(--green)} .ov-bar .p{background:#E08A1E}
+.ov-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:14px;border-top:1px solid var(--line)}
+.ov-it{min-width:0}
+.ov-it b{display:block;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
+.ov-it span{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:13px;font-weight:600;line-height:1.3;color:var(--ink-2);white-space:nowrap}
+.ov-it span i{flex:none;width:8px;height:8px;border-radius:99px;background:#E08A1E}
+.ov-it span .ic{width:14px;height:14px;stroke-width:3;color:var(--green)}
+.ov-row .ov-it+.ov-it{padding-left:12px;border-left:1px solid var(--line)}
 .pstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .pstat{display:flex;flex-direction:column;gap:12px;padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px}
 .pst-ic{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:var(--pale);color:var(--pale-ink)}
@@ -526,8 +532,6 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
   .dots{display:none}
   .foot{padding-bottom:calc(92px + env(safe-area-inset-bottom))}   /* clears the bottom tab bar */
   .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
-  .stats{grid-template-columns:1fr 1fr 1fr;gap:8px}
-  .stat{flex-direction:column;align-items:flex-start;padding:12px;gap:8px}
   .iconbtn{min-width:0;flex:1}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
@@ -977,7 +981,7 @@ function animatePage(view, id){
   // Take the class off once it has played, so things shown later (search filtering, opened modules) don't replay it.
   clearTimeout(animTimer); animTimer = setTimeout(() => $app.classList.remove('enter', 'enter-soft'), 1100);
   if (same) return $app.classList.add('enter-soft');
-  const BLOCKS = '.card, .pstat, .stat, details.mod, .lintro, .pv-lh, .hd-row, .hd, .h-sec, .title, .ltitle, .m9-card, .m9-h1, .m9-caution, .m9-peds, .m9-modrow, .m9-term';
+  const BLOCKS = '.card, .pstat, details.mod, .lintro, .pv-lh, .hd-row, .hd, .h-sec, .title, .ltitle, .m9-card, .m9-h1, .m9-caution, .m9-peds, .m9-modrow, .m9-term';
   [...$app.querySelectorAll(BLOCKS)]
     .filter(el => !el.parentElement.closest(BLOCKS))                            // animate outer blocks, not the parts inside them
     .forEach((el, i) => { el.setAttribute('data-anim', ''); el.style.setProperty('--i', i); });
@@ -1030,11 +1034,15 @@ function dashboard(){
       </article>`; }).join('');
   }
   a += `
-    <div class="stats">
-      <div class="stat"><span class="ico">${ic('cap')}</span><div><b>${done}<small> / ${N_LESSONS}</small></b><span>Lessons complete</span></div></div>
-      <div class="stat sand"><span class="ico">${ic('clock')}</span><div><b>${ip}</b><span>In progress</span></div></div>
-      <div class="stat"><span class="ico">${ic('check')}</span><div><b>${confirmedCount()}</b><span>Phrases confirmed</span></div></div>
-    </div>`;
+    <section class="card ov" aria-label="Your progress">
+      <div class="ov-top"><span class="ov-k">Your progress</span><span class="ov-pct">${Math.round(done * 100 / N_LESSONS)}%</span></div>
+      <div class="ov-main"><b>${done}</b><small>/ ${N_LESSONS}</small><span>lessons complete</span></div>
+      <div class="ov-bar" role="img" aria-label="${done} of ${N_LESSONS} lessons complete, ${ip} in progress">${done ? `<i class="c" style="width:max(8px,${done * 100 / N_LESSONS}%)"></i>` : ''}${ip ? `<i class="p" style="width:max(8px,${ip * 100 / N_LESSONS}%)"></i>` : ''}</div>
+      <div class="ov-row">
+        <div class="ov-it"><b>${ip}</b><span><i aria-hidden="true"></i>In progress</span></div>
+        <div class="ov-it"><b>${confirmedCount()}</b><span>${ic('check')}Phrases confirmed</span></div>
+      </div>
+    </section>`;
 
   // Right column: every module and lesson, with search and expand/collapse.
   const stCls = { complete: 'c', in_progress: 'p', not_started: 'n' }, stText = { complete: 'Complete', in_progress: 'In progress', not_started: 'Not started' };
