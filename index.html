@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="m9.css?v=20261117f">
+<link rel="stylesheet" href="m9.css?v=20261117g">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
@@ -376,6 +376,18 @@ details .list{padding:0 0 10px}
 .ov-it span i.n{background:var(--line-2)}   /* "Not started" marker on Settings: the empty part of the bar */
 .pcard{display:flex;flex-direction:column;gap:14px;padding:20px}
 .pcard h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.015em;line-height:1.3}
+/* Settings cards that fold away: Move to another device, Daily backup */
+.pfold{padding:0}
+.pfold > summary{display:flex;align-items:center;justify-content:flex-start;gap:14px;padding:16px 14px 16px 20px;font-weight:400;border-radius:inherit}
+.pfold > summary h2{margin:0;font-size:18px;font-weight:800;letter-spacing:-.015em;line-height:1.3}
+.pfold-s{display:block;margin-top:2px;font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+.pfold .tutor-ico{width:44px;height:44px}
+.pfold .chev-box{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;color:var(--muted);transition:transform .2s ease,background-color .16s ease}
+.pfold > summary:hover .chev-box{background:var(--sunk);color:var(--ink)}
+.pfold[open] > summary .chev-box{transform:rotate(180deg)}
+.pfold-in{display:flex;flex-direction:column;gap:14px;padding:0 20px 20px}
+.pfold-in > .pdesc:first-child{margin:0}
+.pfold .adv:not([open]) .chev{transform:none}   /* the folds inside keep their own arrow */
 .pdesc{margin:4px 0 0;font-size:14px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
 .tutor-ico.green{background:var(--pale);color:var(--pale-ink)}
 .pcard .tutor-head{gap:14px} .pcard .tutor-ico{width:44px;height:44px}
@@ -553,10 +565,10 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <!-- ?v= is the release stamp: change it (here and on m9.css) whenever any of these files change, so phones fetch the new copy instead of a saved one. -->
-<script src="curriculum.js?v=20261117f"></script>
+<script src="curriculum.js?v=20261117g"></script>
 <!-- Module 09 (Pediatrics): lesson data, then its pages. The app still runs as Modules 01-08 if these fail to load. -->
-<script src="module9.js?v=20261117f"></script>
-<script src="m9.js?v=20261117f"></script>
+<script src="module9.js?v=20261117g"></script>
+<script src="m9.js?v=20261117g"></script>
 <script>
 /* ---------- State ---------- */
 const KEY = 'egyptian_academy_v92';
@@ -1350,6 +1362,10 @@ function search(){
   };
 }
 
+// Settings cards that fold away (closed to start). Which ones are open is kept while the app is open.
+const FOLD = {};
+const foldHead = (id, icon, title, sub) => `<summary><span class="tutor-ico green">${ic(icon)}</span>
+  <span class="grow"><h2 id="${id}">${title}</h2><span class="pfold-s">${sub}</span></span><span class="chev-box">${ic('chev')}</span></summary>`;
 function progress(_, opts){
   const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length, d = S.completed.length;
   const hasKey = !!localStorage.getItem('gemini_key');
@@ -1405,8 +1421,9 @@ function progress(_, opts){
           <button class="btn primary" id="saveKey" disabled>${ic('check', 'sm')}Save</button></div>
       </section>
 
-      <section class="card pcard o5" aria-labelledby="move-h">
-        <div><h2 id="move-h">Move to another device</h2><p class="pdesc">Your progress saves automatically in this browser. The easiest way to move it is <b>Save backup file</b> here, then <b>Load backup file</b> on the other device. You can also copy it as text.</p></div>
+      <details class="card pfold o5" id="moveCard" aria-labelledby="move-h"${FOLD.moveCard ? ' open' : ''}>
+        ${foldHead('move-h', 'send', 'Move to another device', 'Backup file or progress text')}
+        <div class="pfold-in"><p class="pdesc">Your progress saves automatically in this browser. The easiest way to move it is <b>Save backup file</b> here, then <b>Load backup file</b> on the other device. You can also copy it as text.</p>
         <details class="adv" id="stateBox"><summary>${ic('chev', 'chev')}<span>Show progress text</span></summary>
           <div class="adv-in">
             <label class="sr" for="state">Progress text</label>
@@ -1420,10 +1437,12 @@ function progress(_, opts){
         </details>
         <div class="reset-row"><p class="pdesc">Start again from lesson 1. This erases all progress in this browser.</p>
           <button class="btn danger" id="reset">${ic('trash', 'sm')}Start over</button></div>
-      </section>
+      </div></details>
 
-      <section class="card pcard o4" id="backupCard" aria-labelledby="backup-h">
-        <div><h2 id="backup-h">Daily backup</h2><p class="pdesc">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so now and then save a backup file too.</p></div>
+      <details class="card pfold o4" id="backupCard" aria-labelledby="backup-h"${FOLD.backupCard ? ' open' : ''}>
+        ${foldHead('backup-h', 'clock', 'Daily backup', (() => { const b = backups()[0]; if (!b) return 'No backup yet'; const t = new Date(b.at);
+          return 'Last saved ' + esc(t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5)); })())}
+        <div class="pfold-in"><p class="pdesc">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so now and then save a backup file too.</p>
         ${(() => { const list = backups();
           if (!list.length) return `<p class="pdesc">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`;
           const row = (b, i) => { const t = new Date(b.at);      // when the copy was actually made
@@ -1441,8 +1460,9 @@ function progress(_, opts){
           <input type="file" id="loadFile" accept=".txt,text/plain" hidden>
         </div>
         <div id="bkMsg"></div>
-      </section>
+      </div></details>
     </div></div></div>`;
+  ['moveCard', 'backupCard'].forEach(id => { const d = document.getElementById(id); d.addEventListener('toggle', e => { if (e.target === d) FOLD[id] = d.open; }); });
   const bkMore = document.getElementById('bkMore');      // the fold's label follows its state
   if (bkMore) bkMore.addEventListener('toggle', () => { const s = bkMore.querySelector('summary span'), n = backups().length - 1;
     s.textContent = bkMore.open ? `Hide older ${n === 1 ? 'backup' : 'backups'}` : `Show ${n} older ${n === 1 ? 'backup' : 'backups'}`; });
