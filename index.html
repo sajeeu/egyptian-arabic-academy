@@ -14,6 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="m9.css">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
@@ -554,13 +555,20 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="curriculum.js"></script>
+<!-- Module 09 (Pediatrics): lesson data, then its pages. The app still runs as Modules 01-08 if these fail to load. -->
+<script src="module9.js"></script>
+<script src="m9.js"></script>
 <script>
 /* ---------- State ---------- */
 const KEY = 'egyptian_academy_v92';
+const HAS_M9 = typeof M9_VIEWS !== 'undefined' && !!M9_VIEWS;   // Module 09 is loaded (m9.js added its lessons to CURRICULUM)
 const byId = Object.fromEntries(CURRICULUM.map(l => [l.id, l]));
+// Totals come from the curriculum, so adding a module later needs no other change.
+const MODULES = [...new Set(CURRICULUM.map(l => l.module))].sort((a, b) => a - b);
+const N_LESSONS = CURRICULUM.length, N_PHRASES = CURRICULUM.reduce((n, l) => n + l.ex.length, 0);
 // Module names, as given by the course author (not part of the curriculum file).
 const MODULE_NAMES = { 1: 'Greetings & Introductions', 2: 'Everyday Essentials', 3: 'Everyday Conversations', 4: 'Hospital Team Communication',
-  5: 'Patient Interviews', 6: 'Examinations & Patient Care', 7: 'Clinical Communication', 8: 'Advanced Egyptian Conversations' };
+  5: 'Patient Interviews', 6: 'Examinations & Patient Care', 7: 'Clinical Communication', 8: 'Advanced Egyptian Conversations', 9: 'Pediatrics' };
 const label = id => id.replace('_', ' ');        // "M01_L01" -> "M01 L01"
 // iPhone or iPad (iPadOS reports itself as a Mac with a touch screen). Their Home Screen app keeps its own storage.
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -618,7 +626,7 @@ const isDone = id => S.completed.includes(id);
 const status = id => isDone(id) ? 'complete' : (S.lessons[id] ? 'in_progress' : 'not_started');
 // Primary = earliest lesson in curriculum order that is not complete (never "last visited").
 const primary = () => CURRICULUM.find(l => !isDone(l.id)) || null;
-const others = () => { const p = primary(); return CURRICULUM.filter(l => l !== p && status(l.id) === 'in_progress'); };
+const others = () => { const p = primary(); return CURRICULUM.filter(l => l !== p && status(l.id) === 'in_progress' && l.module !== 9); };   // Module 09 has its own "Next in Pediatrics" card
 const confirmedCount = () => Object.values(S.lessons).reduce((a, x) => a + x.confirmed.length, 0);
 
 function startLesson(id){ if (!S.lessons[id]) { S.lessons[id] = { idx: 1, confirmed: [] }; save(); } }
@@ -807,7 +815,7 @@ function geminiSay(text, slow, say){
   ws.onclose = e => { if (sayJob === job && !job.chunks.length){ say(`Google's voice couldn't play${e.reason ? ` (${esc(e.reason)})` : ''}. Check your Google key in Settings → Tutor setup.`); job.stop(); } };
 }
 
-async function startTutor(L, ex){
+async function startTutor(L, ex, prompt){
   const key = localStorage.getItem('gemini_key');
   if (!key) return show('progress', null, { askKey: true });
   stopTutor();
@@ -825,7 +833,7 @@ async function startTutor(L, ex){
   ws.onopen = () => ws.send(JSON.stringify({ setup: {
     model: GEMINI_MODEL,
     generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } } },
-    systemInstruction: { parts: [{ text: tutorPrompt(L, ex) }] },
+    systemInstruction: { parts: [{ text: prompt || tutorPrompt(L, ex) }] },
     inputAudioTranscription: {},
     outputAudioTranscription: {},
   } }));
@@ -863,7 +871,7 @@ function sendTyped(text){
 function tutorBtn(live){
   const b = document.getElementById('tutorStart'); if (!b) return;
   b.className = `btn block ${live ? 'live-btn' : 'pale'}`; b.setAttribute('aria-pressed', live);
-  b.innerHTML = live ? '<span class="live-dot" aria-hidden="true"></span><span>Stop talking with tutor</span>' : `${ic('mic')}<span>Start talking with tutor</span>`;
+  b.innerHTML = live ? '<span class="live-dot" aria-hidden="true"></span><span>Stop talking with tutor</span>' : `${ic('mic')}<span>${b.dataset.label || 'Start talking with tutor'}</span>`;
 }
 function endTutorUI(keepLog){
   tutorBtn(false);
@@ -947,9 +955,10 @@ const ring = (done, total, size = 64) => { const r = size / 2 - 5, c = 2 * Math.
 
 function show(view, id, opts = {}){
   stopTutor(); if ('speechSynthesis' in window) speechSynthesis.cancel();
-  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || ((view === 'lesson' || view === 'overview') && b.dataset.v === 'dashboard')));
+  document.getElementById('m9sheet')?.remove();                 // Module 09's first-open note never stays over another page
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || ((view === 'lesson' || view === 'overview' || view.startsWith('m9')) && b.dataset.v === 'dashboard')));
   $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
-  ({ dashboard, lesson, overview, search, progress, finished }[view])(id, opts);
+  ({ dashboard, lesson, overview, search, progress, finished, ...(HAS_M9 ? M9_VIEWS : {}) }[view])(id, opts);
   renderAppBar();                                               // the install / iPhone banner follows the current progress
   document.querySelector('.foot').classList.toggle('off', view !== 'progress');   // "Powered by" only on the Settings tab
   // Next card of the same lesson, in the one-column layout: open at the "Phrase x of y" line, so the phrase and the
@@ -968,7 +977,7 @@ function animatePage(view, id){
   // Take the class off once it has played, so things shown later (search filtering, opened modules) don't replay it.
   clearTimeout(animTimer); animTimer = setTimeout(() => $app.classList.remove('enter', 'enter-soft'), 1100);
   if (same) return $app.classList.add('enter-soft');
-  const BLOCKS = '.card, .pstat, .stat, details.mod, .lintro, .pv-lh, .hd-row, .hd, .h-sec, .title, .ltitle';
+  const BLOCKS = '.card, .pstat, .stat, details.mod, .lintro, .pv-lh, .hd-row, .hd, .h-sec, .title, .ltitle, .m9-card, .m9-h1, .m9-caution, .m9-peds, .m9-modrow, .m9-term';
   [...$app.querySelectorAll(BLOCKS)]
     .filter(el => !el.parentElement.closest(BLOCKS))                            // animate outer blocks, not the parts inside them
     .forEach((el, i) => { el.setAttribute('data-anim', ''); el.style.setProperty('--i', i); });
@@ -1007,6 +1016,7 @@ function dashboard(){
         <div><p class="pp-ar" lang="ar" dir="rtl" style="font-size:${pp.ex.ar.length > 18 ? 34 : 46}px">${esc(pp.ex.ar)}</p><p class="pp-en">${esc(pp.ex.en)}</p></div></div>
       <div class="hero-cta"><button class="btn primary block lg" onclick="startLesson('${p.id}');show('lesson','${p.id}')">${ic('playCircle')}${ps === 'in_progress' ? 'Resume Curriculum Lesson' : 'Start Curriculum Lesson'}</button></div>
     </div></article>`;
+  if (HAS_M9) a += m9HomeCard();                                           // "Next in Pediatrics", straight under the curriculum lesson
   const o = others().filter(l => !(S.dismissed || []).includes(l.id));    // cards she removed from Home stay hidden
   if (o.length){
     a += `<h2 class="hd" style="margin-top:8px">Other lessons in progress</h2>` + o.map(l => { const lp = pos(l), c = ctx(l.scenario); return `
@@ -1021,7 +1031,7 @@ function dashboard(){
   }
   a += `
     <div class="stats">
-      <div class="stat"><span class="ico">${ic('cap')}</span><div><b>${done}<small> / 64</small></b><span>Lessons complete</span></div></div>
+      <div class="stat"><span class="ico">${ic('cap')}</span><div><b>${done}<small> / ${N_LESSONS}</small></b><span>Lessons complete</span></div></div>
       <div class="stat sand"><span class="ico">${ic('clock')}</span><div><b>${ip}</b><span>In progress</span></div></div>
       <div class="stat"><span class="ico">${ic('check')}</span><div><b>${confirmedCount()}</b><span>Phrases confirmed</span></div></div>
     </div>`;
@@ -1030,7 +1040,7 @@ function dashboard(){
   const stCls = { complete: 'c', in_progress: 'p', not_started: 'n' }, stText = { complete: 'Complete', in_progress: 'In progress', not_started: 'Not started' };
   const b = `
     <div>
-      <div class="hd-row"><h2 class="hd">All modules</h2><span class="hd-count">8 modules · 64 lessons</span></div>
+      <div class="hd-row"><h2 class="hd">All modules</h2><span class="hd-count">${MODULES.length} modules · ${N_LESSONS} lessons</span></div>
       <p class="mod-intro">Every lesson is listed with its own status. Search by lesson title or ID, or select View to preview a lesson without changing your progress.</p>
     </div>
     <div class="mod-tools">
@@ -1041,9 +1051,10 @@ function dashboard(){
     </div>
     <p class="mres" id="modres" aria-live="polite" hidden></p>
     <div class="mods">` +
-    [1,2,3,4,5,6,7,8].map(m => {
+    MODULES.map(m => {
+      if (HAS_M9 && m === 9) return m9HomeRow();                            // 36 lessons: the row opens the module page instead of expanding
       const ls = CURRICULUM.filter(l => l.module === m), count = s => ls.filter(l => status(l.id) === s).length;
-      const parts = [`${count('complete')}/8 complete`, count('in_progress') && `${count('in_progress')} in progress`, count('not_started') && `${count('not_started')} not started`].filter(Boolean);
+      const parts = [`${count('complete')}/${ls.length} complete`, count('in_progress') && `${count('in_progress')} in progress`, count('not_started') && `${count('not_started')} not started`].filter(Boolean);
       const mm = String(m).padStart(2, '0'), full = count('complete') === ls.length;   // every lesson in the module is complete
       return `<details class="mod${count('complete') || count('in_progress') ? ' active' : ''}${full ? ' done' : ''}"><summary><span class="mod-num"${full ? ` aria-label="Module ${mm} complete"` : ''}>${full ? ic('check') : mm}</span>
           <span class="grow"><span class="mod-h">Module ${mm}${full ? `<span class="mod-done">${ic('checkCircle', 'sm')}Module complete</span>` : ''}</span><span class="mod-name">${esc(MODULE_NAMES[m])}</span><span class="mod-count">${full ? `All ${ls.length} lessons complete` : parts.join(' · ')}</span></span>
@@ -1099,6 +1110,7 @@ function dashboard(){
       d.hidden = !hit; d.open = !!q && hit > 0; lessons += hit; modsHit += hit > 0;
     });
     document.getElementById('modclear').hidden = !qIn.value;
+    const m9r = document.getElementById('m9row'); if (m9r) m9r.hidden = !!q;
     const res = document.getElementById('modres');
     res.hidden = !q || !modsHit;
     res.textContent = `Showing ${lessons} ${lessons === 1 ? 'lesson' : 'lessons'} in ${modsHit} ${modsHit === 1 ? 'module' : 'modules'} for “${shown}”`;
@@ -1130,6 +1142,7 @@ function lessonHeader(L, extra = ''){
 /* Lesson overview: opens first from the module list. Viewing it never changes progress. */
 const ORDINAL = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
 function overview(id){
+  if (HAS_M9 && byId[id].module === 9) return m9Preview(id);   // conversation lessons have their own preview (m9.js)
   const L = byId[id], st = status(id), s = S.lessons[id], p = primary(), code = label(id);
   const stLabel = { not_started: 'Not Started', in_progress: 'In Progress', complete: 'Complete' }[st];
   const n = L.ex.length;
@@ -1207,6 +1220,7 @@ function finishNote(doneId){
 
 function lesson(id, opts){
   const L = byId[id], st = status(id);
+  if (HAS_M9 && L.module === 9) return m9Lesson(id, opts);   // conversation lessons have their own pages (m9.js)
 
   if (st === 'not_started') return overview(id);   // preview: does not change status
   if (st === 'complete'){               // review only
@@ -1311,7 +1325,7 @@ function search(){
   // Common searches shown while the box is empty. Each one matches phrases in the curriculum (checked in regression.js).
   const COMMON = { 'Everyday': ['hello', 'good morning', 'how are you', 'thank you', 'please', 'sorry', 'where is', 'how much', 'today', 'wait', 'understand', 'repeat', 'slowly'],
     'At the hospital': ['doctor', 'nurse', 'patient', 'pain', 'medicine', 'blood', 'pressure', 'temperature', 'fever', 'test', 'results', 'head', 'stomach', 'x-ray', 'emergency'] };
-  const chips = () => `<p class="chips-intro">Type to search all 321 phrases, or tap a common word:</p>` +
+  const chips = () => `<p class="chips-intro">Type to search all ${N_PHRASES} phrases, or tap a common word:</p>` +
     Object.entries(COMMON).map(([g, ws]) => `<div class="chip-group"><b>${g}</b><div class="chips">${ws.map(w => `<button type="button" class="chip" data-w="${esc(w)}">${esc(w)}</button>`).join('')}</div></div>`).join('');
   let hits = [];
   res.innerHTML = chips();
@@ -1325,13 +1339,14 @@ function search(){
     hits = [];
     for (const L of CURRICULUM) for (const e of L.ex) if ([e.ar, e.lat, e.en].some(x => norm(x).includes(t))) hits.push([L, e]);
     // Each match: Listen and Slowly play it here; the rest opens the lesson overview (viewing never changes progress).
-    res.innerHTML = hits.length ? `<div style="margin-bottom:6px">${hits.length} match${hits.length === 1 ? '' : 'es'}${hits.length > 60 ? ' (showing 60)' : ''}</div>` +
+    const vocab = HAS_M9 ? m9SearchVocab(t, norm) : '';                   // Module 09 vocabulary terms are their own result type
+    res.innerHTML = vocab + (hits.length ? `<div style="margin-bottom:6px">${hits.length} match${hits.length === 1 ? '' : 'es'}${hits.length > 60 ? ' (showing 60)' : ''}</div>` +
       hits.slice(0, 60).map(([L, e], i) => `<div class="result">
         <button class="r-open" data-i="${i}" aria-label="Open ${label(L.id)} overview: ${esc(e.en)}"><span class="ar" lang="ar" style="display:block">${esc(e.ar)}</span><b>${esc(e.lat)}</b> · ${esc(e.en)}
-          <span style="display:block;margin-top:6px"><span class="tag">${label(L.id)} · ${e.n}</span></span></button>
+          <span style="display:block;margin-top:6px">${HAS_M9 ? m9SearchWho(L, e) : ''}<span class="tag">${label(L.id)} · ${e.n}</span></span></button>
         <span class="r-play"><button class="btn pale sm" data-i="${i}" data-rate="0.85" aria-label="Listen">${ic('volume', 'sm')}<span>Listen</span></button>
           <button class="btn ghost sm" data-i="${i}" data-rate="0.55" aria-label="Listen slowly">${ic('slow', 'sm')}<span>Slowly</span></button></span></div>`).join('')
-      : `<p class="chips-intro"><b>No matches for “${esc(q.value.trim())}”.</b></p>` + chips();
+      : vocab ? '' : `<p class="chips-intro"><b>No matches for “${esc(q.value.trim())}”.</b></p>` + chips());
   };
   res.onclick = e => {
     const c = e.target.closest('button[data-w]'); if (c){ q.value = c.dataset.w; q.oninput(); return; }
@@ -1345,13 +1360,13 @@ function progress(_, opts){
   const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length, d = S.completed.length;
   const hasKey = !!localStorage.getItem('gemini_key');
   const ph = confirmedCount();
-  const modRows = [1,2,3,4,5,6,7,8].map(m => {
+  const modRows = MODULES.map(m => {
     const ls = CURRICULUM.filter(l => l.module === m), c = ls.filter(l => isDone(l.id)).length, p = ls.filter(l => status(l.id) === 'in_progress').length;
     const mm = String(m).padStart(2, '0'), full = c === ls.length;
     return `<div class="mrow${full ? ' done' : ''}"><span class="mnum${full ? ' done' : c || p ? ' active' : ''}"${full ? ` aria-label="Module ${mm} complete"` : ''}>${full ? ic('check') : mm}</span>
       <div class="mrow-b"><div class="mrow-t"><span class="mrow-n">${esc(MODULE_NAMES[m])}</span>
         <span class="mrow-c">${p ? `<span class="mrow-p">${p} in progress</span>` : ''}${full ? `<span class="conf">${ic('check')}Complete</span>` : `<span>${c}/${ls.length}</span>`}</span></div>
-        <div class="bar8" role="img" aria-label="${c} of ${ls.length} lessons complete${p ? `, ${p} in progress` : ''}">${ls.map(l => `<span class="${isDone(l.id) ? 'c' : status(l.id) === 'in_progress' ? 'p' : ''}"></span>`).join('')}</div></div></div>`; }).join('');
+        ${HAS_M9 && m === 9 ? m9SettingsBar(c, p) : `<div class="bar8" role="img" aria-label="${c} of ${ls.length} lessons complete${p ? `, ${p} in progress` : ''}">${ls.map(l => `<span class="${isDone(l.id) ? 'c' : status(l.id) === 'in_progress' ? 'p' : ''}"></span>`).join('')}</div>`}</div></div>`; }).join('');
   $app.classList.add('wide');
   $app.innerHTML = `<div class="pgw">
     <h1 class="ltitle">Progress &amp; settings</h1>
@@ -1359,7 +1374,7 @@ function progress(_, opts){
       <section class="pstats o1" aria-label="Lesson totals">
         <div class="pstat"><span class="pst-ic">${ic('cap')}</span><div><b>${d}</b><span>Complete</span></div></div>
         <div class="pstat sand"><span class="pst-ic">${ic('clock')}</span><div><b>${ip}</b><span>In progress</span></div></div>
-        <div class="pstat grey"><span class="pst-ic">${ic('circle')}</span><div><b>${64 - d - ip}</b><span>Not started</span></div></div>
+        <div class="pstat grey"><span class="pst-ic">${ic('circle')}</span><div><b>${N_LESSONS - d - ip}</b><span>Not started</span></div></div>
       </section>
 
       <section class="card pcard o2" aria-labelledby="mods-h">
@@ -1416,7 +1431,7 @@ function progress(_, opts){
           const row = (b, i) => { const t = new Date(b.at);      // when the copy was actually made
             const when = t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5);
             const bp = Object.values(b.state.lessons || {}).reduce((a, x) => a + x.confirmed.length, 0);
-            return `<div class="tint bk-row"><div><b>Saved ${esc(when)}</b><span>${(b.state.completed || []).length}/64 lessons complete · ${bp} ${bp === 1 ? 'phrase' : 'phrases'} confirmed</span></div>
+            return `<div class="tint bk-row"><div><b>Saved ${esc(when)}</b><span>${(b.state.completed || []).length}/${N_LESSONS} lessons complete · ${bp} ${bp === 1 ? 'phrase' : 'phrases'} confirmed</span></div>
               <button class="btn ghost again" data-bk="${i}">${ic('retry', 'sm')}Restore</button></div>`; };
           // The newest backup is always shown; older ones fold away until asked for.
           const older = list.length - 1;
@@ -1479,7 +1494,7 @@ function progress(_, opts){
   };
   document.getElementById('reset').onclick = async () => {
     if (!await confirmModal({ title: 'Start over?', text: 'This erases all progress saved in this browser: every completed lesson and confirmed phrase. Your daily backups are kept.', yes: 'Yes, start over', danger: true, icon: 'trash' })) return;
-    S = freshState(); save(); show('dashboard'); toast('Progress erased. Starting from 0/64.');
+    S = freshState(); save(); show('dashboard'); toast(`Progress erased. Starting from 0/${N_LESSONS}.`);
   };
 }
 
@@ -1508,8 +1523,9 @@ function finished(){
   $app.classList.remove('wide');
   $app.innerHTML = `<div class="card" style="text-align:center;padding:36px 20px">
     <div class="logo" style="width:64px;height:64px;margin:0 auto 14px;border-radius:18px">${ic('cap', 'lg')}</div>
-    <h1 class="title">Mabrouk! You finished all 64 lessons.</h1><p class="muted">All 8 modules complete. Revisit any lesson from Search to review it.</p>
-    <button class="btn primary" onclick="show('search')">${ic('search', 'sm')}Review phrases</button></div>`;
+    <h1 class="title">Mabrouk! You finished all ${N_LESSONS} lessons.</h1><p class="muted">All ${MODULES.length} modules complete. Revisit any lesson from Search to review it.</p>
+    <button class="btn primary" onclick="show('search')">${ic('search', 'sm')}Review phrases</button>
+    ${HAS_M9 ? `<button class="btn ghost" style="margin-top:10px" onclick="show('m9')">Module 09: guide and Conversation Lab</button>` : ''}</div>`;
 }
 
 document.getElementById('logoMark').innerHTML = ic('steth');
