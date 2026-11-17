@@ -271,6 +271,9 @@ button.m9-modrow{display:flex;align-items:center;gap:14px;width:100%;padding:14p
 .m9-sbar i.p{background:#E08A1E}
 .m9-sbar-n{font-size:12.5px;font-weight:600;color:var(--muted)}
 .m9-note em{padding-right:.16em}   /* the font has no true italic; the slanted letters would lean into the next space */
+/* Module guide: each communication pattern is a collapsible row inside one card */
+.m9-pats .m9-acc-head{padding:12px 0;border-radius:12px}
+.m9-pats .m9-acc-body{margin:0;padding:2px 0 14px;border-top:0}
 /* Search: who speaks a Module 09 line */
 .m9-swho{display:inline-flex;align-items:center;min-height:22px;padding:0 9px;border-radius:99px;font-size:12px;font-weight:800;margin-right:6px}
 .m9-swho.you{background:var(--pale);color:var(--pale-ink)}

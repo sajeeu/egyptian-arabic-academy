@@ -49,7 +49,7 @@ function m9Track(n, idx, confirmed, scenesOf){
 }
 
 /* ---------- Shell: render, clicks, audio, first-open note ---------- */
-var m9Says = [], m9Open = null, m9LabOpen = {}, m9CaseOpen = {};
+var m9Says = [], m9Open = null, m9LabOpen = {}, m9CaseOpen = {}, m9PatOpen = {};
 function m9Render(html, cls = '', style = ''){
   m9Says = [];
   $app.classList.add('wide');
@@ -67,9 +67,9 @@ function m9Click(e){
   if (say) return m9Play(say, m9Says[+say.dataset.say]);
   const acc = e.target.closest('[data-acc]');
   if (acc){
-    const card = acc.closest('.m9-card'), open = card.classList.toggle('m9-open'), [kind, key] = acc.dataset.acc.split(':');
+    const card = acc.closest('.m9-accbox') || acc.closest('.m9-card'), open = card.classList.toggle('m9-open'), [kind, key] = acc.dataset.acc.split(':');
     acc.setAttribute('aria-expanded', open);
-    ({ unit: m9Open, lab: m9LabOpen, case: m9CaseOpen }[kind])[key] = open;
+    ({ unit: m9Open, lab: m9LabOpen, case: m9CaseOpen, pat: m9PatOpen }[kind])[key] = open;
   }
 }
 function m9Go(v, id){
@@ -427,8 +427,11 @@ function m9Guide(section){
       <h3 class="h3">Register examples</h3>
       <ul class="cols2">${G.register.examples.map(x => `<li class="inset stack g4"><span class="pill" style="align-self: flex-start">${esc(x.label)}</span><span class="ar ar-sm" lang="ar" dir="rtl">${esc(x.ar)}</span><span class="tl">${esc(x.lat)}</span><span class="en">${esc(x.en)}</span></li>`).join('')}</ul>
     </section>
-    <section class="card pad stack g16" id="m9-pat" aria-labelledby="pat-h"><h2 class="h2" id="pat-h">Communication patterns</h2>
-      ${G.patterns.map(p => `<div class="stack g8"><h3 class="h3">${esc(p.title)}</h3><ol class="steps">${p.text.split(p.text.includes(' → ') ? ' → ' : '; ').map((t, i) => `<li class="step"><b>${i + 1}</b><span>${esc(t)}</span></li>`).join('')}</ol></div>`).join('')}</section>
+    <section class="card pad stack g8 pats" id="m9-pat" aria-labelledby="pat-h"><h2 class="h2" id="pat-h">Communication patterns</h2>
+      <div class="divide">${G.patterns.map((p, k) => { const open = !!m9PatOpen[k], steps = p.text.split(p.text.includes(' → ') ? ' → ' : '; ');
+        return `<div class="accbox ${open ? 'open' : ''}"><h3 style="font: inherit"><button type="button" class="acc-head" aria-expanded="${open}" data-acc="pat:${k}">
+          <span class="grow stack g2"><span class="h3">${esc(p.title)}</span><span class="xs">${steps.length} steps</span></span><span class="chev">${m9i('chevd', 18)}</span></button></h3>
+          <div class="acc"><div class="acc-in"><div class="acc-body"><ol class="steps">${steps.map((t, i) => `<li class="step"><b>${i + 1}</b><span>${esc(t)}</span></li>`).join('')}</ol></div></div></div></div>`; }).join('')}</div></section>
     <section class="stack g12" id="m9-cases" aria-labelledby="cases-h">
       <div class="stack g6"><h2 class="h2" id="cases-h">Practice cases</h2><p class="sm">${md(G.casesIntro)}</p></div>
       ${G.cases.map(c => { const open = !!m9CaseOpen[c.id];
