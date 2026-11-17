@@ -427,7 +427,8 @@ function m9Guide(section){
       <h3 class="h3">Register examples</h3>
       <ul class="cols2">${G.register.examples.map(x => `<li class="inset stack g4"><span class="pill" style="align-self: flex-start">${esc(x.label)}</span><span class="ar ar-sm" lang="ar" dir="rtl">${esc(x.ar)}</span><span class="tl">${esc(x.lat)}</span><span class="en">${esc(x.en)}</span></li>`).join('')}</ul>
     </section>
-    <section class="card pad stack g8 pats" id="m9-pat" aria-labelledby="pat-h"><h2 class="h2" id="pat-h">Communication patterns</h2>
+    <section class="card pad stack g8 pats" id="m9-pat" aria-labelledby="pat-h"><div class="stack g6"><h2 class="h2" id="pat-h">Communication patterns</h2>
+      <p class="sm">A simple order of steps for common conversations with families. Follow it so you don't miss anything important and the family can follow you. Tap a pattern to see its steps.</p></div>
       <div class="divide">${G.patterns.map((p, k) => { const open = !!m9PatOpen[k], steps = p.text.split(p.text.includes(' → ') ? ' → ' : '; ');
         return `<div class="accbox ${open ? 'open' : ''}"><h3 style="font: inherit"><button type="button" class="acc-head" aria-expanded="${open}" data-acc="pat:${k}">
           <span class="grow stack g2"><span class="h3">${esc(p.title)}</span><span class="xs">${steps.length} steps</span></span><span class="chev">${m9i('chevd', 18)}</span></button></h3>
