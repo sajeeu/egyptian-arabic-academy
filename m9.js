@@ -415,10 +415,11 @@ function m9Lab(){
 function m9Guide(section){
   const G = M9.guide, ticks = new Set((S.m9 && S.m9.ticks) || []), hasKey = !!localStorage.getItem('gemini_key');
   const md = s => esc(s).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-  const jump = (id, t) => `<button type="button" class="pill jump" data-jump="${id}">${t}</button>`;
+  // Section links: the same list card as the Module 09 page (one row per section, icon, arrow down).
+  const jump = (id, t, icon, tone = '') => `<button type="button" class="lrow" data-jump="${id}"><span class="tile sm${tone}">${m9i(icon, 16)}</span><span class="grow lt">${t}</span><span class="chevr">${m9i('chevd', 18)}</span></button>`;
   m9Render(`${m9Head('Module 09', 'm9', '<span class="pill green">Module 09</span>')}
     <h1 class="h1">Module guide</h1>
-    <div role="navigation" class="row wrap g8" aria-label="Guide sections">${jump('reg', 'Register and gender')}${jump('pat', 'Communication patterns')}${jump('cases', 'Practice cases')}${jump('check', 'Mastery checklist')}${jump('safety', 'Safety and scope')}</div>
+    <div role="navigation" class="card divide" aria-label="Guide sections" style="padding: 6px">${jump('reg', 'Register and gender', 'users')}${jump('pat', 'Communication patterns', 'list')}${jump('cases', 'Practice cases', 'steth')}${jump('check', 'Mastery checklist', 'check')}${jump('safety', 'Safety and scope', 'shield', ' amber')}</div>
     <section class="card pad stack g12" id="m9-reg" aria-labelledby="reg-h">
       <div class="stack g6"><h2 class="h2" id="reg-h">Register and gender quick guide</h2><p class="sm">${esc(G.register.intro)}</p></div>
       <div class="divide">${G.register.rows.map(r => `<div class="reg"><div class="stack"><span class="eyebrow">Female form</span><span class="ar" lang="ar" dir="rtl">${esc(r.f)}</span></div>
