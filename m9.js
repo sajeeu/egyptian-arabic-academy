@@ -438,7 +438,7 @@ function m9Guide(section){
         return `<div class="accbox ${open ? 'open' : ''}"><h3 style="font: inherit"><button type="button" class="acc-head" aria-expanded="${open}" data-acc="case:${c.id}">
           <span class="ccode">${c.id}</span><span class="grow stack"><span class="eyebrow">Case ${c.id}</span><span class="b" style="font-size: 16px; line-height: 1.3">${esc(c.title)}</span></span><span class="chev">${m9i('chevd', 18)}</span></button></h3>
           <div class="acc"><div class="acc-in"><div class="acc-body stack g12"><p style="font-size: 15px; line-height: 1.55; padding-top: 4px">${esc(c.text)}</p>
-            <div class="row wrap g10"><button type="button" class="btn soft sm" data-case="${c.id}">${m9i('headset', 16)}Practise with your tutor</button><span class="pill">Optional</span></div>
+            <div class="row wrap g10"><button type="button" class="btn soft sm" data-case="${c.id}">${m9i('headset', 16)}Practise with your tutor</button></div>
             <div data-casebox="${c.id}"></div></div></div></div></div>`; }).join('')}</div>`)}
     ${sec('check', 'Mastery checklist', `${ticks.size} of ${G.checklist.length} ticked`, 'check', '', `<span class="xs">Language practice, not clinical credentialing</span>
       <ul class="stack g2">${G.checklist.map((t, i) => `<li><button type="button" class="chk" role="checkbox" aria-checked="${ticks.has(i)}" data-tick="${i}"><span class="box">${m9i('check', 16)}</span><span>${esc(t)}</span></button></li>`).join('')}</ul>`)}
