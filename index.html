@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="m9.css?v=20261121a">
+<link rel="stylesheet" href="m9.css?v=20261121b">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
@@ -268,6 +268,8 @@ details .list{padding:0 0 10px}
 .pn-btn:hover{background:var(--sunk);border-color:var(--line-2);color:var(--ink)}
 .pn-btn:active{transform:scale(.94)}
 .pn-btn .ic{width:20px;height:20px}
+.lblock{display:flex;align-items:flex-start;gap:10px;padding:12px 14px;border-radius:14px;background:var(--sand-pale);color:var(--ink);font-size:14px;line-height:1.5;text-wrap:pretty}
+.lblock>.ic{flex:none;margin-top:2px;color:var(--sand)}
 .pdone{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border-radius:14px;background:var(--pale);color:var(--pale-ink);font-size:14.5px;font-weight:700}
 .lreset{display:inline-flex;align-items:center;justify-content:center;gap:8px;align-self:center;min-height:44px;padding:0 16px;border:0;border-radius:12px;background:transparent;color:var(--muted);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;transition:background-color .16s ease,color .16s ease}
 .lreset:hover{background:var(--sunk);color:var(--ink)}
@@ -580,10 +582,10 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <!-- ?v= is the release stamp: change it (here and on m9.css) whenever any of these files change, so phones fetch the new copy instead of a saved one. -->
-<script src="curriculum.js?v=20261121a"></script>
+<script src="curriculum.js?v=20261121b"></script>
 <!-- Module 09 (Pediatrics): lesson data, then its pages. The app still runs as Modules 01-08 if these fail to load. -->
-<script src="module9.js?v=20261121a"></script>
-<script src="m9.js?v=20261121a"></script>
+<script src="module9.js?v=20261121b"></script>
+<script src="m9.js?v=20261121b"></script>
 <script>
 /* ---------- State ---------- */
 const KEY = 'egyptian_academy_v92';
@@ -660,10 +662,12 @@ function startLesson(id){ if (!S.lessons[id]) { S.lessons[id] = { idx: 1, confir
 /* Learner confirms the phrase on screen (Back and Forward can show any phrase of the lesson). Idempotent: each
    phrase is confirmed once. She then goes to the next phrase not yet confirmed; the lesson completes when all are. */
 const nextOpen = (L, st, n) => { const open = L.ex.map(e => e.n).filter(k => !st.confirmed.includes(k));
-  return open.find(k => k > n) || open[0] || 0; };
+  const can = open.length > 1 ? open.filter(k => k !== L.ex.length) : open;   // the last phrase waits until it is the only one left
+  return can.find(k => k > n) || can[0] || 0; };
 function confirmExpression(id, n){
   const L = byId[id], st = S.lessons[id];
   if (!st || isDone(id) || !(n >= 1 && n <= L.ex.length) || st.confirmed.includes(n)) return;   // ignore duplicates / stale clicks
+  if (n === L.ex.length && st.confirmed.length < L.ex.length - 1) return;      // the last phrase finishes the lesson: only once all others are confirmed
   st.confirmed.push(n);
   if (st.confirmed.length < L.ex.length) { st.idx = nextOpen(L, st, n); save(); return show('lesson', id); }
   S.completed.push(id); save();                                               // lesson complete, counted once
@@ -681,6 +685,16 @@ const navBtn = (dir, id, n, what) => `<button type="button" class="pn-btn" id="$
 function phraseNav(id, v, what, middle){
   const n = byId[id].ex.length, sp = '<span class="pn-sp" aria-hidden="true"></span>';
   return `<div class="pnav">${v > 1 ? navBtn('prev', id, v - 1, what) : sp}${middle}${v < n ? navBtn('next', id, v + 1, what) : sp}</div>`;
+}
+/* On the last phrase, Complete (which finishes the lesson) waits until every other phrase is confirmed.
+   Returns the phrases still open, and the reason shown under the disabled button. */
+function finishBlock(L, s, v, what){
+  if (v !== L.ex.length || s.confirmed.includes(v)) return null;
+  const open = L.ex.map(e => e.n).filter(k => k !== v && !s.confirmed.includes(k));
+  if (!open.length) return null;
+  const k = open.length, list = k === 1 ? `${what} ${open[0]} isn't` : k <= 3 ? `${what}s ${open.slice(0, -1).join(', ')} and ${open[k - 1]} aren't`
+    : `${k} ${what}s aren't`;                                          // a long conversation: a count, not a long list
+  return { first: open[0], why: `You can't finish the lesson yet: ${list} confirmed. Confirm ${k === 1 ? 'it' : 'them'} first, then come back to this last ${what}.` };
 }
 /* Reset lesson: clears every confirmed phrase of this lesson and goes back to phrase 1. A second tap confirms. */
 const resetBtn = (id, what) => { const c = S.lessons[id]?.confirmed.length || 0;
@@ -1289,6 +1303,7 @@ function lesson(id, opts){
 
   const s = S.lessons[id], n = L.ex.length, v = viewOf(id, opts), ex = L.ex[v - 1];
   const done = s.confirmed.includes(v), last = !done && s.confirmed.length === n - 1;   // confirming this one finishes the lesson
+  const block = finishBlock(L, s, v, 'phrase');                                       // last phrase, but others are still open
   if (S.dismissed?.includes(id)){ S.dismissed = S.dismissed.filter(x => x !== id); save(); }   // opened again: its Home card returns
   $app.classList.add('wide');                       // the lesson uses the wider page, like Home
   $app.innerHTML = `<div class="lesson">
@@ -1338,6 +1353,9 @@ function lesson(id, opts){
         <div class="actions">
           ${done ? `<div class="pdone">${ic('checkCircle', 'sm')}<span>You confirmed this phrase</span></div>
           <button class="btn primary block go" id="toCur">Continue at phrase ${s.idx}${ic('right')}</button>`
+          : block ? `<button class="btn primary block go" id="ok" disabled aria-describedby="whyBlock">Complete & Next Lesson${ic('check')}</button>
+          <div class="lblock" id="whyBlock">${ic('info', 'sm')}<span>${block.why}</span></div>
+          <button class="btn pale block" id="toOpen">${ic('left', 'sm')}Go to phrase ${block.first}</button>`
           : `<button class="btn primary block go" id="ok">${last ? 'Complete & Next Lesson' : 'Complete & Next Card'}${ic(last ? 'check' : 'right')}</button>
           <button class="btn ghost block again" id="again">${ic('retry', 'sm')}Not Complete — Practice Again</button>
           <div id="againMsg"></div>
@@ -1367,6 +1385,7 @@ function lesson(id, opts){
   typed.onkeydown = e => { if (e.key === 'Enter') send(); };
   wireLessonNav(id, 'phrase');
   if (done){ document.getElementById('toCur').onclick = () => show('lesson', id); return; }
+  if (block){ document.getElementById('toOpen').onclick = () => stepPhrase(id, block.first); return; }
   document.getElementById('ok').onclick = e => { e.currentTarget.disabled = true; confirmExpression(id, v); };
   document.getElementById('again').onclick = () => {
     document.getElementById('againMsg').innerHTML = note('retry', 'No problem, nothing has changed. Listen again, say it slowly a few times, or talk it through with the tutor.');

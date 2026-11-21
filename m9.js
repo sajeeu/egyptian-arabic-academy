@@ -9,7 +9,7 @@ if (M9) CURRICULUM.push(...M9.lessons);
 
 var M9I = {
   back: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>', right: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
-  chevr: '<path d="m9 18 6-6-6-6"/>', chevd: '<path d="m6 9 6 6 6-6"/>', check: '<path d="M20 6 9 17l-5-5"/>',
+  chevr: '<path d="m9 18 6-6-6-6"/>', chevl: '<path d="m15 18-6-6 6-6"/>', chevd: '<path d="m6 9 6 6 6-6"/>', check: '<path d="M20 6 9 17l-5-5"/>',
   play: '<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>',
   eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
   info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
@@ -295,6 +295,7 @@ function m9Lesson(id, opts = {}){
   if (m9Pending(id)) return m9End(id);
   const s = S.lessons[id], n = L.ex.length, v = viewOf(id, opts), ex = L.ex[v - 1], prev = L.ex[v - 2], you = m9mine(L, ex), len = ex.ar.length;
   const done = s.confirmed.includes(v);                              // Back / Forward can show a turn she already confirmed
+  const block = finishBlock(L, s, v, 'turn');                        // last turn, but others are still open
   const scenes = L.ex.filter(e => e.scene).map(e => ({ from: e.n, ...e.scene }));
   let scene = null; scenes.forEach(x => { if (v >= x.from) scene = x; });
   const tile = (key, name, lead, icon) => `<button type="button" class="atile${lead ? ' lead' : ''}" id="${key}" aria-pressed="false"><span class="atile-ic">${m9i(icon, 22)}</span>${name}</button>`;
@@ -330,6 +331,9 @@ function m9Lesson(id, opts = {}){
         <div class="stack g10 acts">
           ${done ? `<div data-raw="done"></div>
           <button type="button" class="btn primary lg block go" id="toCur">Continue at turn ${s.idx}${m9i('right', 20)}</button>`
+          : block ? `<button type="button" class="btn primary lg block go" id="ok" disabled aria-describedby="whyBlock">Complete &amp; Next${m9i('right', 20)}</button>
+          <div data-raw="block"></div>
+          <button type="button" class="btn ghost block" id="toOpen">${m9i('chevl', 17)}Go to turn ${block.first}</button>`
           : `<button type="button" class="btn primary lg block go" id="ok">Complete &amp; Next${m9i('right', 20)}</button>
           <button type="button" class="btn ghost block" id="again">${m9i('retry', 17)}Not Complete — Practice Again</button>
           <div id="againMsg"></div>
@@ -339,6 +343,7 @@ function m9Lesson(id, opts = {}){
   const raw = $app.querySelector('[data-raw="finish"]'); if (raw) raw.outerHTML = finishNote(opts.justFinished);
   // Back / Forward, "confirmed" and Reset use the app's own markup and styles (shared with the other lessons)
   $app.querySelector('[data-raw="nav"]').outerHTML = phraseNav(id, v, 'turn', `<span class="badge">Turn ${v}</span>`);
+  const rb = $app.querySelector('[data-raw="block"]'); if (rb) rb.outerHTML = `<div class="lblock" id="whyBlock">${ic('info', 'sm')}<span>${block.why}</span></div>`;
   const rd = $app.querySelector('[data-raw="done"]'); if (rd) rd.outerHTML = `<div class="pdone">${ic('checkCircle', 'sm')}<span>You confirmed this turn</span></div>`;
   $app.querySelector('[data-raw="reset"]').outerHTML = resetBtn(id, 'turn');
   wireLessonNav(id, 'turn');
@@ -354,6 +359,7 @@ function m9Lesson(id, opts = {}){
   tiles.mic.onclick = () => { light('mic'); listen(heard, () => { if (lit === 'mic') light(null); }); };
   m9WireTutor(L, ex, m9TurnPrompt(L, ex));
   if (done){ document.getElementById('toCur').onclick = () => show('lesson', id); return; }
+  if (block){ document.getElementById('toOpen').onclick = () => stepPhrase(id, block.first); return; }
   document.getElementById('ok').onclick = e => { e.currentTarget.disabled = true; m9Confirm(id, v); };
   document.getElementById('again').onclick = () => {
     document.getElementById('againMsg').innerHTML = note('retry', 'No problem, nothing has changed. Listen again, say it slowly a few times, or talk it through with the tutor.');
@@ -364,6 +370,7 @@ function m9Lesson(id, opts = {}){
 function m9Confirm(id, n){
   const L = byId[id], st = S.lessons[id];
   if (!st || isDone(id) || !(n >= 1 && n <= L.ex.length) || st.confirmed.includes(n)) return;
+  if (n === L.ex.length && st.confirmed.length < L.ex.length - 1) return;     // the last turn opens End of lesson: only once all others are confirmed
   st.confirmed.push(n);
   if (st.confirmed.length < L.ex.length){ st.idx = nextOpen(L, st, n); save(); return show('lesson', id); }
   save(); show('m9end', id);
