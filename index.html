@@ -1516,7 +1516,7 @@ function progress(_, opts){
       <details class="card pfold o4" id="backupCard" aria-labelledby="backup-h"${FOLD.backupCard ? ' open' : ''}>
         ${foldHead('backup-h', 'clock', 'Daily backup', (() => { const b = backups()[0]; if (!b) return 'No backup yet'; const t = new Date(b.at);
           return 'Last saved ' + esc(t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5)); })())}
-        <div class="pfold-in"><p class="pdesc">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so now and then save a backup file too.</p>
+        <div class="pfold-in"><p class="pdesc">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so it's a good idea to save a backup file from time to time as well.</p>
         ${(() => { const list = backups();
           if (!list.length) return `<p class="pdesc">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`;
           const row = (b, i) => { const t = new Date(b.at);      // when the copy was actually made
