@@ -14,7 +14,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="m9.css?v=20261117h">
+<link rel="stylesheet" href="m9.css?v=20261121a">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
@@ -120,6 +120,7 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .seg{height:8px;border-radius:99px;background:var(--line)}
 .seg.done{background:var(--green)}
 .seg.now{background:var(--pale);box-shadow:inset 0 0 0 2px var(--green)}
+.seg.done.now{background:var(--green);box-shadow:none;outline:2px solid var(--green);outline-offset:2px}   /* a confirmed phrase she went back to */
 .pp{display:flex;flex-direction:column;justify-content:space-between;gap:10px;min-height:164px;padding:18px 20px 20px;border-radius:16px;background:var(--deep);color:var(--on-deep)}
 .pp-k{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--deep-soft)}
 .pp-ar{margin:0;font-family:"Noto Naskh Arabic",var(--font-ar);font-weight:700;line-height:1.5;text-align:left;color:#fff;overflow-wrap:anywhere}
@@ -258,8 +259,19 @@ details .list{padding:0 0 10px}
 .side .actions{order:-1}   /* one column (phone, tablet): the Complete buttons come straight after the phrase, before the tutor */
 @container lesson (min-width:960px){ .stage{grid-template-columns:minmax(0,1fr) 380px;gap:24px;align-items:stretch} .side .actions{order:0} }
 .phrase{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:clamp(28px,4.5cqw,44px) clamp(20px,4cqw,40px);text-align:center}
-.phrase-text{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:100%}
+.phrase-text{display:flex;flex-direction:column;align-items:center;gap:10px;max-width:100%;align-self:stretch}   /* full width, so Back / Forward sit at the card's edges */
 .phrase .badge{margin:0;min-height:26px;padding:0 12px;font-size:11px;font-weight:800;letter-spacing:.08em}
+/* Back / Forward beside the phrase number (a blank space keeps the number centred on the first and last phrase) */
+.pnav{display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:8px;width:100%}
+.pnav>:nth-child(2){justify-self:center}
+.pn-btn{display:grid;place-items:center;width:44px;height:44px;padding:0;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--ink-2);cursor:pointer;transition:background-color .16s ease,border-color .16s ease,color .16s ease,transform .12s ease}
+.pn-btn:hover{background:var(--sunk);border-color:var(--line-2);color:var(--ink)}
+.pn-btn:active{transform:scale(.94)}
+.pn-btn .ic{width:20px;height:20px}
+.pdone{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border-radius:14px;background:var(--pale);color:var(--pale-ink);font-size:14.5px;font-weight:700}
+.lreset{display:inline-flex;align-items:center;justify-content:center;gap:8px;align-self:center;min-height:44px;padding:0 16px;border:0;border-radius:12px;background:transparent;color:var(--muted);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;transition:background-color .16s ease,color .16s ease}
+.lreset:hover{background:var(--sunk);color:var(--ink)}
+.lreset.armed,.lreset.armed:hover{background:var(--danger-pale);color:var(--danger)}
 .arabic{margin:0;font-family:var(--font-ar);font-weight:700;font-size:clamp(54px,8cqw,84px);line-height:1.55;direction:rtl;text-wrap:balance;overflow-wrap:anywhere;max-width:100%}
 .arabic.long{font-size:clamp(36px,5.6cqw,60px)}
 .latin{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.3}
@@ -568,10 +580,10 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <!-- ?v= is the release stamp: change it (here and on m9.css) whenever any of these files change, so phones fetch the new copy instead of a saved one. -->
-<script src="curriculum.js?v=20261117h"></script>
+<script src="curriculum.js?v=20261121a"></script>
 <!-- Module 09 (Pediatrics): lesson data, then its pages. The app still runs as Modules 01-08 if these fail to load. -->
-<script src="module9.js?v=20261117h"></script>
-<script src="m9.js?v=20261117h"></script>
+<script src="module9.js?v=20261121a"></script>
+<script src="m9.js?v=20261121a"></script>
 <script>
 /* ---------- State ---------- */
 const KEY = 'egyptian_academy_v92';
@@ -645,17 +657,50 @@ const confirmedCount = () => Object.values(S.lessons).reduce((a, x) => a + x.con
 
 function startLesson(id){ if (!S.lessons[id]) { S.lessons[id] = { idx: 1, confirmed: [] }; save(); } }
 
-/* Learner confirms the current expression. Idempotent: only the active expression can be confirmed, once. */
+/* Learner confirms the phrase on screen (Back and Forward can show any phrase of the lesson). Idempotent: each
+   phrase is confirmed once. She then goes to the next phrase not yet confirmed; the lesson completes when all are. */
+const nextOpen = (L, st, n) => { const open = L.ex.map(e => e.n).filter(k => !st.confirmed.includes(k));
+  return open.find(k => k > n) || open[0] || 0; };
 function confirmExpression(id, n){
   const L = byId[id], st = S.lessons[id];
-  if (!st || isDone(id) || st.idx !== n || st.confirmed.includes(n)) return;   // ignore duplicates / stale clicks
+  if (!st || isDone(id) || !(n >= 1 && n <= L.ex.length) || st.confirmed.includes(n)) return;   // ignore duplicates / stale clicks
   st.confirmed.push(n);
-  if (n < L.ex.length) { st.idx = n + 1; save(); return show('lesson', id); }
+  if (st.confirmed.length < L.ex.length) { st.idx = nextOpen(L, st, n); save(); return show('lesson', id); }
   S.completed.push(id); save();                                               // lesson complete, counted once
   const i = CURRICULUM.indexOf(L);
   const next = CURRICULUM.slice(i + 1).find(l => !isDone(l.id));
   if (!next) return show('finished');
   startLesson(next.id); show('lesson', next.id, { justFinished: id });
+}
+
+/* Back and Forward move through this lesson's phrases only. They change what is on screen, never the saved progress,
+   the phrase she is on, or the primary lesson. No Back on the first phrase, no Forward on the last. */
+function stepPhrase(id, n){ const L = byId[id]; if (!S.lessons[id] || isDone(id) || !(n >= 1 && n <= L.ex.length)) return; show('lesson', id, { view: n }); }
+const viewOf = (id, opts) => { const s = S.lessons[id], v = opts?.view; return Number.isInteger(v) && v >= 1 && v <= byId[id].ex.length ? v : s.idx; };
+const navBtn = (dir, id, n, what) => `<button type="button" class="pn-btn" id="${dir === 'prev' ? 'prevP' : 'nextP'}" data-step="${n}" aria-label="${dir === 'prev' ? 'Back' : 'Forward'} to ${what} ${n}">${ic(dir === 'prev' ? 'chevl' : 'chevr')}</button>`;
+function phraseNav(id, v, what, middle){
+  const n = byId[id].ex.length, sp = '<span class="pn-sp" aria-hidden="true"></span>';
+  return `<div class="pnav">${v > 1 ? navBtn('prev', id, v - 1, what) : sp}${middle}${v < n ? navBtn('next', id, v + 1, what) : sp}</div>`;
+}
+/* Reset lesson: clears every confirmed phrase of this lesson and goes back to phrase 1. A second tap confirms. */
+const resetBtn = (id, what) => { const c = S.lessons[id]?.confirmed.length || 0;
+  return c ? `<button type="button" class="lreset" id="lreset" data-c="${c}">${ic('trash', 'sm')}<span>Reset lesson</span></button>` : ''; };
+function wireLessonNav(id, what){
+  $app.querySelectorAll('.pn-btn').forEach(b => b.onclick = () => stepPhrase(id, +b.dataset.step));
+  const r = document.getElementById('lreset'); if (!r) return;
+  r.onclick = () => {
+    if (!r.classList.contains('armed')){
+      const c = +r.dataset.c;
+      r.classList.add('armed'); r.innerHTML = `${ic('trash', 'sm')}<span>Tap again to reset ${c} ${what}${c === 1 ? '' : 's'}</span>`;
+      clearTimeout(r._t); r._t = setTimeout(() => { if (r.isConnected){ r.classList.remove('armed'); r.innerHTML = `${ic('trash', 'sm')}<span>Reset lesson</span>`; } }, 4000);
+      return;
+    }
+    clearTimeout(r._t); resetLesson(id); toast(`Lesson reset. You're back on ${what} 1.`);
+  };
+}
+function resetLesson(id){
+  const st = S.lessons[id]; if (!st || isDone(id)) return;
+  st.confirmed = []; st.idx = 1; save(); show('lesson', id);
 }
 
 /* ---------- Speech (browser, free) ---------- */
@@ -926,6 +971,8 @@ const ICONS = {
   trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 15h10l1-15"/>',
   cap: '<path d="M2 9 12 4l10 5-10 5z"/><path d="M6 11v5c3 2.5 9 2.5 12 0v-5"/><path d="M22 9v6"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
+  chevl: '<path d="m15 6-6 6 6 6"/>',
+  chevr: '<path d="m9 6 6 6-6 6"/>',
   book: '<path d="M2 5h7a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H2z"/><path d="M22 5h-7a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h8z"/>',
   steth: '<path d="M5 3v6a5 5 0 0 0 10 0V3"/><path d="M10 14v2a5 5 0 0 0 10 0v-3"/><circle cx="20" cy="11" r="2"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.01"/>',
@@ -1240,8 +1287,8 @@ function lesson(id, opts){
     return;
   }
 
-  const s = S.lessons[id], ex = L.ex[s.idx - 1], last = s.idx === L.ex.length;
-  const n = L.ex.length;
+  const s = S.lessons[id], n = L.ex.length, v = viewOf(id, opts), ex = L.ex[v - 1];
+  const done = s.confirmed.includes(v), last = !done && s.confirmed.length === n - 1;   // confirming this one finishes the lesson
   if (S.dismissed?.includes(id)){ S.dismissed = S.dismissed.filter(x => x !== id); save(); }   // opened again: its Home card returns
   $app.classList.add('wide');                       // the lesson uses the wider page, like Home
   $app.innerHTML = `<div class="lesson">
@@ -1249,15 +1296,15 @@ function lesson(id, opts){
     <div class="lintro">
       ${lessonHeader(L)}
       <div class="lprog">
-        <div class="lc-prog"><b>Phrase ${s.idx} of ${n}</b>${s.confirmed.length ? `<span class="conf">${ic('check')}${s.confirmed.length} confirmed</span>` : `<span class="conf zero">0 confirmed</span>`}</div>
-        <div class="segs" role="img" aria-label="${s.confirmed.length} of ${n} phrases confirmed. You are on phrase ${s.idx}." style="grid-template-columns:repeat(${n},minmax(0,1fr))">${L.ex.map(e => `<span class="seg${s.confirmed.includes(e.n) ? ' done' : e.n === s.idx ? ' now' : ''}"></span>`).join('')}</div>
+        <div class="lc-prog"><b>Phrase ${v} of ${n}</b>${s.confirmed.length ? `<span class="conf">${ic('check')}${s.confirmed.length} confirmed</span>` : `<span class="conf zero">0 confirmed</span>`}</div>
+        <div class="segs" role="img" aria-label="${s.confirmed.length} of ${n} phrases confirmed. You are on phrase ${v}." style="grid-template-columns:repeat(${n},minmax(0,1fr))">${L.ex.map(e => `<span class="seg${s.confirmed.includes(e.n) ? ' done' : ''}${e.n === v ? ' now' : ''}"></span>`).join('')}</div>
       </div>
     </div>
 
     <div class="stage">
       <section class="card phrase" aria-labelledby="phrase-h">
         <div class="phrase-text">
-          <h2 class="badge" id="phrase-h">Phrase ${s.idx}</h2>
+          ${phraseNav(id, v, 'phrase', `<h2 class="badge" id="phrase-h">Phrase ${v}</h2>`)}
           <div class="arabic${ex.ar.length > 18 ? ' long' : ''}" lang="ar" dir="rtl">${esc(ex.ar)}</div>
           <div class="latin">${esc(ex.lat)}</div>
           <div class="english">${esc(ex.en)}</div>
@@ -1289,10 +1336,13 @@ function lesson(id, opts){
         </section>
 
         <div class="actions">
-          <button class="btn primary block go" id="ok">${last ? 'Complete & Next Lesson' : 'Complete & Next Card'}${ic(last ? 'check' : 'right')}</button>
+          ${done ? `<div class="pdone">${ic('checkCircle', 'sm')}<span>You confirmed this phrase</span></div>
+          <button class="btn primary block go" id="toCur">Continue at phrase ${s.idx}${ic('right')}</button>`
+          : `<button class="btn primary block go" id="ok">${last ? 'Complete & Next Lesson' : 'Complete & Next Card'}${ic(last ? 'check' : 'right')}</button>
           <button class="btn ghost block again" id="again">${ic('retry', 'sm')}Not Complete — Practice Again</button>
           <div id="againMsg"></div>
-          <div class="hint">${ic('info', 'sm')}<span>Tap Complete when <i>you</i> feel ready. It's your own confirmation, not a pronunciation score.</span></div>
+          <div class="hint">${ic('info', 'sm')}<span>Tap Complete when <i>you</i> feel ready. It's your own confirmation, not a pronunciation score.</span></div>`}
+          ${resetBtn(id, 'phrase')}
         </div>
       </div>
     </div></div>`;
@@ -1315,7 +1365,9 @@ function lesson(id, opts){
   const send = () => { const t = typed.value.trim(); if (t && tutor?.ready){ typed.value = ''; sendTyped(t); } };
   document.getElementById('send').onclick = send;
   typed.onkeydown = e => { if (e.key === 'Enter') send(); };
-  document.getElementById('ok').onclick = e => { e.currentTarget.disabled = true; confirmExpression(id, s.idx); };
+  wireLessonNav(id, 'phrase');
+  if (done){ document.getElementById('toCur').onclick = () => show('lesson', id); return; }
+  document.getElementById('ok').onclick = e => { e.currentTarget.disabled = true; confirmExpression(id, v); };
   document.getElementById('again').onclick = () => {
     document.getElementById('againMsg').innerHTML = note('retry', 'No problem, nothing has changed. Listen again, say it slowly a few times, or talk it through with the tutor.');
   };

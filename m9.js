@@ -44,7 +44,7 @@ function m9Next(){ return M9.lessons.find(l => status(l.id) === 'in_progress') |
 var m9st = id => ({ complete: 'c', in_progress: 'p', not_started: 'n' }[status(id)]);
 function m9Track(n, idx, confirmed, scenesOf){
   let h = '';
-  for (let k = 1; k <= n; k++) h += `<span class="${confirmed.includes(k) ? 'done' : k === idx ? 'now' : ''}${k > 1 && scenesOf && scenesOf[k - 1].scene ? ' brk' : ''}"></span>`;
+  for (let k = 1; k <= n; k++) h += `<span class="${confirmed.includes(k) ? 'done' : ''}${k === idx ? ' now' : ''}${k > 1 && scenesOf && scenesOf[k - 1].scene ? ' brk' : ''}"></span>`;
   return h;
 }
 
@@ -293,26 +293,28 @@ function m9Lesson(id, opts = {}){
   const L = byId[id], st = status(id);
   if (st === 'not_started' || st === 'complete') return m9Preview(id);
   if (m9Pending(id)) return m9End(id);
-  const s = S.lessons[id], n = L.ex.length, ex = L.ex[s.idx - 1], prev = L.ex[s.idx - 2], you = m9mine(L, ex), len = ex.ar.length;
+  const s = S.lessons[id], n = L.ex.length, v = viewOf(id, opts), ex = L.ex[v - 1], prev = L.ex[v - 2], you = m9mine(L, ex), len = ex.ar.length;
+  const done = s.confirmed.includes(v);                              // Back / Forward can show a turn she already confirmed
   const scenes = L.ex.filter(e => e.scene).map(e => ({ from: e.n, ...e.scene }));
-  let scene = null; scenes.forEach(x => { if (s.idx >= x.from) scene = x; });
+  let scene = null; scenes.forEach(x => { if (v >= x.from) scene = x; });
   const tile = (key, name, lead, icon) => `<button type="button" class="atile${lead ? ' lead' : ''}" id="${key}" aria-pressed="false"><span class="atile-ic">${m9i(icon, 22)}</span>${name}</button>`;
   m9Render(`${opts.justFinished ? `<div data-raw="finish"></div>` : ''}
     ${m9Head('Module 09', 'm9', `<span class="pill green">${m9code(L)}</span>`)}
     <div class="stack g12">
       <div class="stack g2"><h1 class="h2">${esc(L.title)}</h1><span class="xs">${esc(m9unitText(L))}</span></div>
       <div class="stack g8" id="m9prog">
-        <div class="row between base g12"><span class="b" style="font-size: 14px">Turn ${s.idx} of ${n}</span><span class="xs tc" style="color: var(--gink)">${s.confirmed.length} confirmed</span></div>
-        <div class="track" role="img" aria-label="Turn ${s.idx} of ${n}, ${s.confirmed.length} confirmed">${m9Track(n, s.idx, s.confirmed, L.ex)}</div>
+        <div class="row between base g12"><span class="b" style="font-size: 14px">Turn ${v} of ${n}</span><span class="xs tc" style="color: var(--gink)">${s.confirmed.length} confirmed</span></div>
+        <div class="track" role="img" aria-label="Turn ${v} of ${n}, ${s.confirmed.length} confirmed">${m9Track(n, v, s.confirmed, L.ex)}</div>
         ${scene ? `<div class="row wrap g8"><span class="pill blue">${esc(scene.title)}</span><span class="xs">Scene ${scene.n} of ${scenes.length}</span></div>` : ''}
       </div></div>
     <div class="layout rev">
       <div class="stack g12">
-        ${scene && scene.from === s.idx ? `<div class="inset row g12"><span class="tile sm gray">${m9i('list', 16)}</span><div class="stack"><span class="eyebrow">New scene</span><span class="b">${esc(scene.title)}</span><span class="xs">${esc(scene.setting)}</span></div></div>` : ''}
+        ${scene && scene.from === v ? `<div class="inset row g12"><span class="tile sm gray">${m9i('list', 16)}</span><div class="stack"><span class="eyebrow">New scene</span><span class="b">${esc(scene.title)}</span><span class="xs">${esc(scene.setting)}</span></div></div>` : ''}
         ${prev ? `<div class="prev"><span class="xs none">Before</span><span class="who none ${m9mine(L, prev) ? 'you' : 'other'}">${esc(prev.who)}</span><span class="ar" lang="ar" dir="rtl">${esc(prev.ar)}</span></div>` : ''}
         <section class="card turncard grow ${you ? 'you' : 'other'}" aria-label="${you ? 'You say this' : 'You hear this'}">
           <div class="band">${m9i(you ? 'mic' : 'ear', 18)}<span>${you ? 'You say this' : 'You hear this'}</span><span class="name">${esc(ex.who)}</span></div>
           <div class="turn-body stack g8 grow" style="justify-content: center">
+            <div data-raw="nav"></div>
             <p class="ar ${len <= 22 ? 'ar-xl' : len <= 54 ? 'ar-lg' : 'ar-long'}" lang="ar" dir="rtl">${esc(ex.ar)}</p>
             <p class="tl" style="font-size: 18px">${esc(ex.lat)}</p><p class="en" style="font-size: 16px">${esc(ex.en)}</p></div>
           <div style="width: 100%; display: flex; justify-content: center; padding: 16px clamp(16px, 4cqw, 36px) clamp(20px, 4cqw, 32px)">
@@ -326,12 +328,20 @@ function m9Lesson(id, opts = {}){
               <p class='tutor-d'>Talk out loud about this turn: say it, ask what it means, or role-play the scene. Stop whenever you like.</p></div></div>
           <button type="button" class='btn pale block' id="tutorStart" aria-pressed="false"></button>${M9_TUTORBOX}</section>
         <div class="stack g10 acts">
-          <button type="button" class="btn primary lg block go" id="ok">Complete &amp; Next${m9i('right', 20)}</button>
+          ${done ? `<div data-raw="done"></div>
+          <button type="button" class="btn primary lg block go" id="toCur">Continue at turn ${s.idx}${m9i('right', 20)}</button>`
+          : `<button type="button" class="btn primary lg block go" id="ok">Complete &amp; Next${m9i('right', 20)}</button>
           <button type="button" class="btn ghost block" id="again">${m9i('retry', 17)}Not Complete — Practice Again</button>
           <div id="againMsg"></div>
-          <p class="note">${m9i('info', 16)}<span>Tap Complete when <em>you</em> feel ready. It’s your own confirmation, not a pronunciation score.</span></p>
+          <p class="note">${m9i('info', 16)}<span>Tap Complete when <em>you</em> feel ready. It’s your own confirmation, not a pronunciation score.</span></p>`}
+          <div data-raw="reset"></div>
         </div></div></div>`, '', 'max-width: 1080px');
   const raw = $app.querySelector('[data-raw="finish"]'); if (raw) raw.outerHTML = finishNote(opts.justFinished);
+  // Back / Forward, "confirmed" and Reset use the app's own markup and styles (shared with the other lessons)
+  $app.querySelector('[data-raw="nav"]').outerHTML = phraseNav(id, v, 'turn', `<span class="badge">Turn ${v}</span>`);
+  const rd = $app.querySelector('[data-raw="done"]'); if (rd) rd.outerHTML = `<div class="pdone">${ic('checkCircle', 'sm')}<span>You confirmed this turn</span></div>`;
+  $app.querySelector('[data-raw="reset"]').outerHTML = resetBtn(id, 'turn');
+  wireLessonNav(id, 'turn');
   document.getElementById('m9prog').classList.add('lprog');          // the app scrolls here when moving to the next turn on a phone
   const heard = document.getElementById('heard');
   const tiles = { play: document.getElementById('play'), slow: document.getElementById('slow'), mic: document.getElementById('mic') };
@@ -343,17 +353,19 @@ function m9Lesson(id, opts = {}){
   tiles.slow.onclick = () => { light('slow'); speak(ex.ar, 0.55, audioMsg); };
   tiles.mic.onclick = () => { light('mic'); listen(heard, () => { if (lit === 'mic') light(null); }); };
   m9WireTutor(L, ex, m9TurnPrompt(L, ex));
-  document.getElementById('ok').onclick = e => { e.currentTarget.disabled = true; m9Confirm(id, s.idx); };
+  if (done){ document.getElementById('toCur').onclick = () => show('lesson', id); return; }
+  document.getElementById('ok').onclick = e => { e.currentTarget.disabled = true; m9Confirm(id, v); };
   document.getElementById('again').onclick = () => {
     document.getElementById('againMsg').innerHTML = note('retry', 'No problem, nothing has changed. Listen again, say it slowly a few times, or talk it through with the tutor.');
   };
 }
-// She confirms the current turn. The last turn opens End of lesson; the lesson is complete only when she says so there.
+// She confirms the turn on screen, then goes to the next turn not yet confirmed. When every turn is confirmed,
+// End of lesson opens; the lesson is complete only when she says so there.
 function m9Confirm(id, n){
   const L = byId[id], st = S.lessons[id];
-  if (!st || isDone(id) || st.idx !== n || st.confirmed.includes(n)) return;
+  if (!st || isDone(id) || !(n >= 1 && n <= L.ex.length) || st.confirmed.includes(n)) return;
   st.confirmed.push(n);
-  if (n < L.ex.length){ st.idx = n + 1; save(); return show('lesson', id); }
+  if (st.confirmed.length < L.ex.length){ st.idx = nextOpen(L, st, n); save(); return show('lesson', id); }
   save(); show('m9end', id);
 }
 

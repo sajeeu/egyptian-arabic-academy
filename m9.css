@@ -278,6 +278,9 @@ button.m9-modrow{display:flex;align-items:center;gap:14px;width:100%;padding:14p
 .m9-open > h2 > .m9-acc-head .m9-chev{transform:rotate(180deg)}
 .m9-sec > h2 .m9-acc-head{text-wrap:pretty}   /* headings balance their lines; the one-line summary should fill the width */
 .m9-sec:not(.m9-open) .m9-acc-in{visibility:hidden;transition:visibility 0s linear .3s}
+/* Lesson: a turn she already confirmed and went back to (Back / Forward), and the Back / Forward row on the turn card */
+.m9-track .m9-done.m9-now{background:var(--pri);box-shadow:none;height:8px;outline:2px solid var(--pri);outline-offset:2px}
+.m9-turn-body > .pnav{margin-bottom:6px}
 /* Search: who speaks a Module 09 line */
 .m9-swho{display:inline-flex;align-items:center;min-height:22px;padding:0 9px;border-radius:99px;font-size:12px;font-weight:800;margin-right:6px}
 .m9-swho.you{background:var(--pale);color:var(--pale-ink)}
