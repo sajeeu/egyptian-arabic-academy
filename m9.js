@@ -218,7 +218,8 @@ function m9Preview(id){
   const others = L.speakers.split(',').map(x => x.trim()).filter(x => x.toLowerCase() !== L.learner.toLowerCase());
   const pend = m9Pending(id);
   const cta = st === 'complete'
-    ? `<div class="row g12"><span class="tile" style="background: var(--pri); color: var(--on-pri)">${m9i('check', 22)}</span><div class="grow stack"><span class="b">Lesson complete</span><span class="xs">Confirmed by you · tap a turn to hear it again</span></div></div>`
+    ? `<div class="row g12"><span class="tile" style="background: var(--pri); color: var(--on-pri)">${m9i('check', 22)}</span><div class="grow stack"><span class="b">Lesson complete</span><span class="xs">Confirmed by you · tap a turn to hear it again</span></div></div>
+       <div data-raw="restart"></div>`
     : st === 'in_progress'
     ? `<p class="note">${m9i('info', 16)}<span>${pend ? 'You have confirmed every turn. Finish the lesson when you are ready.' : `You are on turn ${s.idx} of ${n}, with ${s.confirmed.length} confirmed.`}</span></p>
        <button type="button" class="btn primary block" data-go="lesson:${id}">${m9i('play', 18)}${pend ? 'Finish lesson' : 'Resume lesson'}</button>`
@@ -243,6 +244,9 @@ function m9Preview(id){
         <div class="card"><ol class="divide" style="padding: 6px">${m9Turns(L)}</ol></div>
         ${st === 'not_started' ? `<button type="button" class="btn primary block" data-go="start:${id}">${m9i('play', 18)}Start lesson</button>` : ''}
       </section></div>`);
+  // Restart (completed lessons) uses the app's own markup, styles and two-tap confirm, shared with the other lessons
+  const rr = $app.querySelector('[data-raw="restart"]');
+  if (rr){ rr.outerHTML = `<p class="restart-why">${restartInfo(id, 'turn')}</p>${restartBtn()}`; wireRestart(id, 'turn'); }
 }
 
 /* ---------- Tutor box (the app's own tutor UI and styles) ---------- */
