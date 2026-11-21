@@ -371,7 +371,7 @@ details .list{padding:0 0 10px}
 .pg-col{display:contents}
 /* On a phone the cards are reordered (o1-o6), so the browser's scroll anchoring can hold a card that is really
    below the one being opened, and the page jumps: the opened card's title slides off the top. Turn it off here. */
-.pgw{overflow-anchor:none}
+.pgw,body.on-settings{overflow-anchor:none}   /* opening or closing a Settings card leaves its title where she tapped it: the browser never scrolls to keep something else in place */
 .o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}.o6{order:6}
 @container page (min-width:1000px){ .pg{display:grid;grid-template-columns:minmax(0,1fr) 440px;gap:24px;align-items:start} .pg-col{display:flex;flex-direction:column;gap:16px;min-width:0} }
 /* Settings: the progress card. Lessons complete leads; the bar shows complete (green) and in progress (amber). */
@@ -1066,6 +1066,7 @@ function show(view, id, opts = {}){
   document.getElementById('m9sheet')?.remove();                 // Module 09's first-open note never stays over another page
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || ((view === 'lesson' || view === 'overview' || view.startsWith('m9')) && b.dataset.v === 'dashboard')));
   $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
+  document.body.classList.toggle('on-settings', view === 'progress');   // see .pgw in the styles
   ({ dashboard, lesson, overview, search, progress, finished, ...(HAS_M9 ? M9_VIEWS : {}) }[view])(id, opts);
   renderAppBar();                                               // the install / iPhone banner follows the current progress
   document.querySelector('.foot').classList.toggle('off', view !== 'progress');   // "Powered by" only on the Settings tab
