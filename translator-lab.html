@@ -54,6 +54,7 @@ ul{margin:0;padding-left:20px} li{margin:3px 0}
 
   <section class="card"><h2>3. Run</h2>
     <button class="btn primary" id="run" disabled>Transcribe, translate and analyse</button>
+    <button class="btn" id="stop" hidden>Stop</button>
     <p class="sm muted">Long recordings are done in 10-minute parts, like the real Translator will. Keep this page open with the screen on until it finishes.</p>
     <div id="status"></div><div id="log" hidden></div>
     <button class="btn" id="compare" disabled>Speed test: compare models (transcript only)</button>
@@ -74,7 +75,7 @@ const API = 'https://generativelanguage.googleapis.com';
 const key = (() => { try { return localStorage.getItem('gemini_key') || ''; } catch { return ''; } })();
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const report = { page: 'translator-lab v4', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
+const report = { page: 'translator-lab v5', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
 let file = null, duration = 0, segs = [], view = 'sbs';
 const OUT = {};                                                       // each model's longest allowed answer
 
@@ -186,7 +187,7 @@ async function gen(model, parts, schema, label, o = {}){
 const FALLBACK = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-4-hydrogen', 'gemini-flash-latest'];
 let activeModel = null;
 const wait = (ms, label) => new Promise(res => { const end = Date.now() + ms;
-  const t = setInterval(() => { const left = Math.ceil((end - Date.now()) / 1000); if (left <= 0){ clearInterval(t); res(); } else status(`<span class="pill warn">${esc(label)} · trying again in ${left} s</span>`); }, 250); });
+  const t = setInterval(() => { const left = Math.ceil((end - Date.now()) / 1000); if (left <= 0 || stopCtl?.signal.aborted){ clearInterval(t); res(); } else status(`<span class="pill warn">${esc(label)} · trying again in ${left} s</span>`); }, 250); });
 async function genAny(parts, schema, label, o = {}){
   const avail = report.modelsAvailable || [];
   const chain = [...new Set([activeModel || $('model').value, ...FALLBACK.filter(m => avail.includes(m))])];
@@ -196,19 +197,25 @@ async function genAny(parts, schema, label, o = {}){
       try { const j = await gen(model, parts, schema, `${label} [${model}]`, o); if (activeModel !== model) log(`Using ${model} from now on.`); activeModel = model; report.answeredBy = [...new Set([...(report.answeredBy || []), model])]; return j; }
       catch (e){
         last = e; const m = e.message || '';
+        if (/^STOPPED/.test(m)) throw e;
+        if (/^TIMEOUT/.test(m)){ fail(`${label} [${model}] no reply`, e); log(`${model} did not reply in time; trying the next model.`); break; }
         if (!/^(503|500|504|429)/.test(m)) throw e;                     // a real error: stop and report it
         const quota = /^429/.test(m) && /quota|exhaust|per day|limit/i.test(m);
         fail(`${label} [${model}] busy or limited`, e);
         if (quota || t === 2){ log(`${model} is ${quota ? 'out of free quota' : 'still busy'}; trying the next model.`); break; }
-        await wait([8000, 20000][t], `${model} is busy`);
+        await wait([8000, 20000][t], `${model} is busy`); if (stopCtl?.signal.aborted) throw new Error('STOPPED by you');
       }
     }
   }
   throw last;
 }
 // Streams the answer so data keeps flowing on slow answers, with a running timer on screen.
-async function streamGen(model, body, label, timeoutMs){
-  const ac = new AbortController(), cap = timeoutMs ? setTimeout(() => ac.abort(), timeoutMs) : 0;
+const FIRST_DATA_MS = 90000, ANSWER_MS = 300000;
+let stopCtl = null;                                                    // the Stop button aborts the request in progress
+async function streamGen(model, body, label, timeoutMs = ANSWER_MS){
+  const ac = new AbortController(); let why = 'total';
+  const cap = setTimeout(() => ac.abort(), timeoutMs), first = setTimeout(() => { why = 'first'; ac.abort(); }, Math.min(FIRST_DATA_MS, timeoutMs));
+  const onStop = () => { why = 'stop'; ac.abort(); }; stopCtl?.signal.addEventListener('abort', onStop);
   const t0 = performance.now(); let firstByte = null, text = '', finish = null, usage = null, chars = 0;
   const tick = setInterval(() => status(`<span class="pill warn">${esc(label)}: ${firstByte === null ? 'waiting for Gemini' : 'receiving'} · ${Math.round((performance.now() - t0) / 1000)} s${chars ? ` · ${chars} characters` : ''}</span> <span class="sm muted">Keep this page open with the screen on.</span>`), 1000);
   try {
@@ -217,7 +224,7 @@ async function streamGen(model, body, label, timeoutMs){
     const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
     for (;;){
       const { done, value } = await rd.read(); if (done) break;
-      if (firstByte === null) firstByte = +((performance.now() - t0) / 1000).toFixed(1);
+      if (firstByte === null){ firstByte = +((performance.now() - t0) / 1000).toFixed(1); clearTimeout(first); }
       buf += dec.decode(value, { stream: true });
       let k; while ((k = buf.indexOf('\n')) >= 0){
         const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
@@ -229,8 +236,8 @@ async function streamGen(model, body, label, timeoutMs){
       }
     }
     return { text, finish, usage, firstByte, seconds: +((performance.now() - t0) / 1000).toFixed(1) };
-  } catch (e){ if (e.name === 'AbortError') throw new Error(`TIMEOUT no full answer within ${Math.round(timeoutMs / 1000)} s`); throw e; }
-  finally { clearInterval(tick); clearTimeout(cap); }
+  } catch (e){ if (e.name === 'AbortError') throw new Error(why === 'stop' ? 'STOPPED by you' : why === 'first' ? `TIMEOUT no reply from ${model} within ${Math.round(Math.min(FIRST_DATA_MS, timeoutMs) / 1000)} s` : `TIMEOUT no full answer within ${Math.round(timeoutMs / 1000)} s`); throw e; }
+  finally { clearInterval(tick); clearTimeout(cap); clearTimeout(first); stopCtl?.signal.removeEventListener('abort', onStop); }
 }
 const backOnline = () => new Promise(res => { const ok = () => navigator.onLine && document.visibilityState === 'visible';
   if (ok()) return setTimeout(res, 1500); log('Waiting for the page to be visible and online again…');
@@ -300,7 +307,7 @@ function cleanAnalysis(sum, ctx, learn, tr){
 
 $('run').onclick = async () => {
   const mime = MIME[(file.name.split('.').pop() || '').toLowerCase()], model = $('model').value;
-  $('run').disabled = $('compare').disabled = true; running = true; keepAwake(true); $('log').textContent = ''; activeModel = null; Object.assign(report, { answeredBy: [], started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
+  $('run').disabled = $('compare').disabled = true; running = true; keepAwake(true); stopCtl = new AbortController(); $('stop').hidden = false; $('log').textContent = ''; activeModel = null; Object.assign(report, { answeredBy: [], started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
   segs = []; ['out', 'sum', 'ctx', 'learn'].forEach(id => $(id).hidden = true);
   let fo = null, part;
   try {
@@ -320,25 +327,25 @@ $('run').onclick = async () => {
     segs.forEach((x, i) => { const nx = segs[i + 1]; if (!x.end || secs(x.end) <= secs(x.start)) x.end = nx ? nx.start : mmss(duration || secs(x.start) + 5); });   // a line ends where the next begins
     render(); report.segments = segs;
     const tr = segs.map(s => `${s.start} | ${s.speaker}${s.role ? ' (' + s.role + ')' : ''} | ${s.ar} | ${s.en}`).join('\n');
-    const sec = async (name, prompt, schema, max) => { try { return await genAny([{ text: prompt }], schema, name, { maxOut: max }); } catch (e){ fail(name, e); return null; } };
+    const sec = async (name, prompt, schema, max) => { try { return await genAny([{ text: prompt }], schema, name, { maxOut: max }); } catch (e){ if (/^STOPPED/.test(e.message)) throw e; fail(name, e); return null; } };
     const sum = await sec('summary', sumPrompt(tr), SUM_SCHEMA, 4096) || {};
     const ctx = await sec('context', ctxPrompt(tr), CTX_SCHEMA, 4096);
     const lrn = await sec('learn', learnPrompt(tr), LEARN_SCHEMA, 6144);
     const an = cleanAnalysis(sum, ctx?.context, lrn?.learn, tr); report.analysis = an; renderAnalysis(an);
     if (an.dropped.length) log(`Checks removed ${an.dropped.length} item(s): ${an.dropped.map(d => d.where + (d.why ? ' (' + d.why + ')' : '')).join(', ')}`);
     status(`<span class="pill">Done</span> <span class="sm">${segs.length} segments, ${new Set(segs.map(s => s.speaker)).size} speakers.</span>`);
-  } catch (e){ fail('run', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message)}</span>`); }
+  } catch (e){ fail('run', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message.replace(/^STOPPED /, ""))}</span>`); }
   finally {
     if (fo) { const del = () => api('/v1beta/' + fo.name, { method: 'DELETE' }).then(() => log('Deleted the file from Gemini file storage.'));
       try { await del(); } catch (e){ fail('delete file', e); backOnline().then(del).catch(e2 => log('Could not delete it; Gemini removes it by itself within 48 hours.')); } }
-    running = false; keepAwake(false); ready(); $('copy').hidden = false; $('copyNote').hidden = false;
+    running = false; keepAwake(false); $('stop').hidden = true; ready(); $('copy').hidden = false; $('copyNote').hidden = false;
   }
 };
 
 const CMP = ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-flash-lite-latest'];
 $('compare').onclick = async () => {
   const mime = MIME[(file.name.split('.').pop() || '').toLowerCase()], list = CMP.filter(m => (report.modelsAvailable || []).includes(m));
-  $('compare').disabled = $('run').disabled = true; running = true; keepAwake(true); $('log').textContent = '';
+  $('compare').disabled = $('run').disabled = true; running = true; keepAwake(true); stopCtl = new AbortController(); $('stop').hidden = false; $('log').textContent = '';
   Object.assign(report, { started: new Date().toISOString(), steps: [], errors: [], usage: [], compare: [], durationSec: Math.round(duration) });
   const row = r => `<tr><td>${esc(r.model)}</td><td>${r.ok ? `${r.seconds} s` : `<span class="pill bad">${esc(r.error.slice(0, 40))}</span>`}</td><td>${r.ok ? r.segments + ' lines · ' + r.speakers + ' spk' : ''}</td></tr>`;
   const draw = () => $('cmp').innerHTML = `<table class="sm" style="width:100%;border-collapse:collapse"><tr><th align="left">Model</th><th align="left">Time</th><th align="left">Result</th></tr>${report.compare.map(row).join('')}</table>`;
@@ -347,6 +354,7 @@ $('compare').onclick = async () => {
     log(`Speed test on ${list.length} models: ${list.join(', ')}`); fo = await upload(file, mime); log('Uploaded.');
     const part = { file_data: { mime_type: mime, file_uri: fo.uri } }, to = mmss(Math.min(duration || 600, 600) + 5);
     for (const m of list){
+      if (stopCtl.signal.aborted) break;
       const t0 = performance.now();
       try { const j = await gen(m, [part, { text: segPrompt('0:00', to, []) }], SEG_SCHEMA, `speed test [${m}]`, { timeoutMs: 150000 });
         const sg = (j.segments || []).filter(x => x && (x.ar || x.en)), u = report.usage[report.usage.length - 1] || {};
@@ -355,12 +363,14 @@ $('compare').onclick = async () => {
       draw();
     }
     status(`<span class="pill">Speed test done</span> <span class="sm">${report.compare.filter(r => r.ok).length} of ${list.length} models answered.</span>`);
-  } catch (e){ fail('speed test', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message)}</span>`); }
+  } catch (e){ fail('speed test', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message.replace(/^STOPPED /, ""))}</span>`); }
   finally {
     if (fo) { try { await api('/v1beta/' + fo.name, { method: 'DELETE' }); log('Deleted the file from Gemini file storage.'); } catch (e){ fail('delete file', e); } }
-    running = false; keepAwake(false); ready(); $('copy').hidden = false; $('copyNote').hidden = false;
+    running = false; keepAwake(false); $('stop').hidden = true; ready(); $('copy').hidden = false; $('copyNote').hidden = false;
   }
 };
+
+$('stop').onclick = () => { stopCtl?.abort(); log('Stopped by you.'); status('<span class="pill bad">Stopping…</span>'); };
 
 /* Results */
 function render(){
