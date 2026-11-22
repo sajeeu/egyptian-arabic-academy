@@ -21,7 +21,7 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
-var TR_VERSION = 'translator-test v8';
+var TR_VERSION = 'translator-test v9';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -136,7 +136,14 @@ async function trRefreshBackups(){
     toast(r.added ? `Restored ${r.added} ${r.added === 1 ? 'recording' : 'recordings'} from ${trEsc(b.dataset.slot)}.` : 'Nothing to restore: every recording in that copy is already here.');
     trRefreshHome(); });
 }
-async function trLog(rec, line){ (rec.log = rec.log || []).push(`${new Date().toLocaleTimeString()} ${line}`); if (rec.log.length > 80) rec.log.splice(0, rec.log.length - 80); }
+var trLogSave = 0;
+async function trLog(rec, line, now){
+  (rec.log = rec.log || []).push(`${new Date().toLocaleTimeString()} ${line}`); if (rec.log.length > 120) rec.log.splice(0, rec.log.length - 120);
+  if (typeof trRunning !== 'undefined' && trRunning && rec === trCurRec){            // the phone may close the page at any moment: keep the log saved
+    clearTimeout(trLogSave);
+    if (now) await trPut(rec).catch(() => {}); else trLogSave = setTimeout(() => trPut(rec).catch(() => {}), 250);
+  }
+}
 
 /* ---------- Which free models are used up today ---------- */
 var trQuota = () => { try { return JSON.parse(localStorage.getItem('eaa_tr_quota')) || {}; } catch { return {}; } };
@@ -304,6 +311,8 @@ var trSumPrompt = tr => `Below is a transcript of a conversation in Egyptian Ara
 Write a structured English summary as JSON: overview (2-3 sentences: what the conversation was about); key_points; symptoms_findings; treatment_medication (exact doses only if said); decisions_next_steps; important_details (things that must not be overlooked).
 Each item: text, status ("stated" = clearly said; "suggested" = proposed or recommended but not agreed; "uncertain" = unclear, hedged or contradictory), times (start times of the lines it comes from).
 Say who said or suggested each thing (by name if a name is used in the conversation, otherwise by speaker label), and check it against the lines.
+symptoms_findings and treatment_medication are ONLY for health matters (symptoms, examination findings, diagnoses, medicines, doses, treatment). If the conversation is not about health, leave both empty; prices, payments, places and arrangements go under key_points or decisions_next_steps.
+If different people clearly take part at different times (for example several drivers), say so.
 Put every request someone makes, every plan and every agreed action under decisions_next_steps (for example: "Speaker 1 asked for two tickets for Friday").
 If nothing was said about a topic, return an EMPTY list for it. Never write items like "nothing was mentioned".
 Transcript (time | speaker | Arabic | English):
@@ -395,7 +404,7 @@ async function trRefreshResult(id){ if (trViewing !== id || !document.getElement
 async function trProcess(rec){
   const redo = rec.status === 'done';                                 // only redoing a part of a finished recording: it stays finished
   trCtl = new AbortController(); const signal = trCtl.signal; trCurRec = rec;
-  trLog(rec, `job ${redo ? 'redoing ' + (rec.redo || []).join(', ') : rec.parts?.length || rec.segments ? 'resumed' : 'started'} (screen-off mode ${trAwake ? 'on' : 'off'}, notifications ${window.Notification ? Notification.permission : 'not available'})`);
+  trLog(rec, `job ${redo ? 'redoing ' + (rec.redo || []).join(', ') : rec.file || rec.parts?.length || rec.segments ? 'resumed' : 'started'} (screen-off mode ${trAwake ? 'on' : 'off'}, notifications ${window.Notification ? Notification.permission : 'not available'})`);
   if (!redo){ rec.status = 'working'; rec.error = ''; rec.retryAt = 0; rec.startedAt = rec.startedAt || Date.now(); }
   delete rec.waitNet; delete rec.redoNote; trLive.started = Date.now(); await trPut(rec);
   const o = { signal, rec, prefer: rec.models?.at(-1) };
@@ -482,7 +491,7 @@ addEventListener('load', () => {
   setTimeout(trResume, 1500);
   trDailyBackup(); setInterval(trDailyBackup, 60000);
 });
-function trEvent(text){ if (trRunning && trCurRec) trLog(trCurRec, 'phone: ' + text); }
+function trEvent(text){ if (trRunning && trCurRec) trLog(trCurRec, 'phone: ' + text, /hidden|paused|offline/.test(text)); }
 document.addEventListener('visibilitychange', () => { trEvent(document.visibilityState === 'hidden' ? 'page hidden (screen off or another app)' : 'page visible again'); if (document.visibilityState === 'visible') trResume(); });
 addEventListener('online', () => { trEvent('back online'); trResume(); });
 addEventListener('offline', () => trEvent('went offline'));
