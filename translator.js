@@ -21,7 +21,7 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
-var TR_VERSION = 'translator-test v6';
+var TR_VERSION = 'translator-test v7';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -33,7 +33,7 @@ var TR_ICONS = {
   wave: '<path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/>',
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
-  check: '<path d="M20 6 9 17l-5-5"/>', left: '<path d="m15 18-6-6 6-6"/>', alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>', chev: '<path d="m6 9 6 6 6-6"/>', left: '<path d="m15 18-6-6 6-6"/>', alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
   play: '<polygon points="6 3 20 12 6 21 6 3"/>', vol: '<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/>', bell: '<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
 };
 var trI = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${TR_ICONS[n] || ''}</svg>`;
@@ -471,15 +471,32 @@ function trStart(){
     show('trrec', id); trRun();
   })();
 }
+var trOpenGroups = new Set();                                        // History groups opened in this visit
+function trGroup(ms){
+  const day = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const today = day(Date.now()), d = day(ms), diff = Math.round((today - d) / 86400000);
+  if (diff <= 0) return { key: 'today', label: 'Today' };
+  if (diff === 1) return { key: 'd' + d.getTime(), label: 'Yesterday' };
+  if (diff < 7) return { key: 'd' + d.getTime(), label: d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'short' }) };
+  const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));      // the Monday of that week
+  return { key: 'w' + mon.getTime(), label: 'Week of ' + mon.toLocaleDateString([], { day: 'numeric', month: 'short', year: mon.getFullYear() !== today.getFullYear() ? 'numeric' : undefined }) };
+}
 async function trRefreshHome(){
   const list = document.getElementById('trList'); if (!list) return;
   let recs = []; try { recs = await trAll(); } catch { list.innerHTML = `<p class="muted small">History isn't available in this browser.</p>`; return; }
   if (!document.getElementById('trList')) return;
   const tag = r => r.status === 'done' ? '<span class="tag green">Ready</span>' : r.status === 'working' ? `<span class="tag sand">${trLive.id === r.id ? 'Translating…' : 'Waiting to continue'}</span>`
     : r.status === 'waiting' ? '<span class="tag sand">Waiting</span>' : r.status === 'paused' ? '<span class="tag">Stopped</span>' : '<span class="tag tr-bad">Failed</span>';
-  list.innerHTML = recs.length ? recs.map(r => `<button class="card tr-row" data-id="${r.id}">${trI('wave')}<span class="grow"><b>${trEsc(r.name)}</b><span class="muted small">${trWhen(r.created)}${r.duration ? ' · ' + trMMSS(r.duration) : ''}</span></span>${tag(r)}</button>`).join('')
-    : `<p class="muted small">No recordings yet. Upload one above.</p>`;
+  const row = r => `<button class="card tr-row" data-id="${r.id}">${trI('wave')}<span class="grow"><b>${trEsc(r.name)}</b><span class="muted small">${trWhen(r.created)}${r.duration ? ' · ' + trMMSS(r.duration) : ''}</span></span>${tag(r)}</button>`;
+  if (!recs.length){ list.innerHTML = `<p class="muted small">No recordings yet. Upload one above.</p>`; return; }
+  // Today's recordings (and any not finished) stay in view; older ones go into closed groups: one per day for the last week, then one per week.
+  const top = recs.filter(r => r.status !== 'done' || trGroup(r.created).key === 'today'), groups = new Map();
+  for (const r of recs) if (!top.includes(r)){ const g = trGroup(r.created); if (!groups.has(g.key)) groups.set(g.key, { ...g, recs: [] }); groups.get(g.key).recs.push(r); }
+  list.innerHTML = top.map(row).join('') + [...groups.values()].map(g => `<details class="tr-group" data-g="${g.key}"${trOpenGroups.has(g.key) ? ' open' : ''}>
+    <summary><span class="grow">${trEsc(g.label)}</span><span class="muted small">${g.recs.length} ${g.recs.length === 1 ? 'recording' : 'recordings'}</span>${trI('chev', 'tr-chev')}</summary>
+    <div class="tr-group-list">${g.recs.map(row).join('')}</div></details>`).join('');
   list.querySelectorAll('.tr-row').forEach(b => b.onclick = () => show('trrec', b.dataset.id));
+  list.querySelectorAll('.tr-group').forEach(d => d.addEventListener('toggle', () => { d.open ? trOpenGroups.add(d.dataset.g) : trOpenGroups.delete(d.dataset.g); }));
 }
 
 /* Loader: shown from upload until everything is finished. All the work happens out of sight. */

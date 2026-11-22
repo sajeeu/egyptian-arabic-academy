@@ -99,3 +99,11 @@
 .tr-play .ic{width:18px;height:18px}
 .tr-segs.can-play .tr-seg:hover .tr-play{background:var(--green);color:var(--on-green)}
 .tr-seg.on .tr-play{background:var(--green);color:var(--on-green);animation:tr-pulse 1.1s ease-in-out infinite}
+/* History: older recordings in closed groups by day, then by week */
+.tr-group{border:1px solid var(--line);border-radius:18px;background:var(--surface)}
+.tr-group summary{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;cursor:pointer;list-style:none;font-weight:800;font-size:15px}
+.tr-group summary::-webkit-details-marker{display:none}
+.tr-chev{color:var(--muted);transition:transform .2s}
+.tr-group[open] .tr-chev{transform:rotate(180deg)}
+.tr-group-list{display:flex;flex-direction:column;gap:8px;padding:0 10px 10px}
+.tr-group-list .tr-row{box-shadow:none}
