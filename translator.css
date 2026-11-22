@@ -56,7 +56,7 @@
 
 /* Results */
 .tr-player{position:sticky;top:72px;z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:8px 10px;box-shadow:0 8px 20px -14px rgba(16,35,26,.35)}
-.tr-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;background:var(--sunk);border-radius:14px}
+.tr-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;padding:4px;background:var(--sunk);border-radius:14px}
 .tr-tabs button{min-height:42px;border:0;border-radius:11px;background:none;font-size:13px;font-weight:700;color:var(--ink-2);cursor:pointer;padding:0 4px}
 .tr-tabs button[aria-selected="true"]{background:var(--surface);color:var(--pale-ink);box-shadow:0 1px 3px rgba(16,35,26,.12)}
 .tr-lang{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
@@ -90,3 +90,5 @@
 /* Report for Claude: small, out of the way, available at any moment */
 .tr-report{margin-top:6px;background:none;border:0;padding:8px;font:inherit;font-size:13px;font-weight:700;color:var(--muted);text-decoration:underline;cursor:pointer}
 .tr-report-box{width:100%;min-height:160px;margin-top:8px;font:12px/1.4 ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--sunk);color:var(--ink)}
+.tr-redo{flex-direction:row;align-items:center;gap:14px} .tr-redo p{margin:0}
+.tr-spin.sm{width:28px;height:28px;border-width:3px;margin:0;flex:none}
