@@ -14,7 +14,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="m9.css?v=20261122a">
+<link rel="stylesheet" href="m9.css?v=20261122b">
+<link rel="stylesheet" href="translator.css?v=20261122b">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
@@ -548,7 +549,7 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 /* Phone: navigation moves to a bottom tab bar */
 @media (max-width:620px){
   .top{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}  /* a blur here would trap the fixed tab bar inside the header */
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--surface);border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom))}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;background:var(--surface);border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom))}
   nav button{flex-direction:column;justify-content:center;gap:3px;min-height:52px;font-size:12px;padding:0;color:var(--muted)}
   nav button:hover,nav button.on,nav button.on:hover{background:none}
   nav button.on{color:var(--pale-ink)}
@@ -573,6 +574,7 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
     <nav id="nav">
       <button data-v="dashboard"></button>
       <button data-v="search"></button>
+      <button data-v="tr" hidden></button>
       <button data-v="progress"></button>
     </nav>
   </div>
@@ -585,10 +587,12 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <!-- ?v= is the release stamp: change it (here and on m9.css) whenever any of these files change, so phones fetch the new copy instead of a saved one. -->
-<script src="curriculum.js?v=20261122a"></script>
+<script src="curriculum.js?v=20261122b"></script>
 <!-- Module 09 (Pediatrics): lesson data, then its pages. The app still runs as Modules 01-08 if these fail to load. -->
-<script src="module9.js?v=20261122a"></script>
-<script src="m9.js?v=20261122a"></script>
+<script src="module9.js?v=20261122b"></script>
+<script src="m9.js?v=20261122b"></script>
+<!-- Conversation Translator (its own tab). Hidden until switched on; the app runs as before if it fails to load. -->
+<script src="translator.js?v=20261122b"></script>
 <script>
 /* ---------- State ---------- */
 const KEY = 'egyptian_academy_v92';
@@ -1037,6 +1041,7 @@ const ICONS = {
   pin: '<path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
   flame: '<path d="M12 21a7 7 0 0 0 7-7c0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8a7 7 0 0 0 7 7z"/>',
+  languages: '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
 };
 function ic(name, cls = ''){ return `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`; }
 const note = (icon, html) => `<div class="note">${ic(icon)}<div>${html}</div></div>`;
@@ -1064,10 +1069,10 @@ const ring = (done, total, size = 64) => { const r = size / 2 - 5, c = 2 * Math.
 function show(view, id, opts = {}){
   stopTutor(); if ('speechSynthesis' in window) speechSynthesis.cancel();
   document.getElementById('m9sheet')?.remove();                 // Module 09's first-open note never stays over another page
-  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || ((view === 'lesson' || view === 'overview' || view.startsWith('m9')) && b.dataset.v === 'dashboard')));
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || (view.startsWith('tr') && b.dataset.v === 'tr') || ((view === 'lesson' || view === 'overview' || view.startsWith('m9')) && b.dataset.v === 'dashboard')));
   $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
   document.body.classList.toggle('on-settings', view === 'progress');   // see .pgw in the styles
-  ({ dashboard, lesson, overview, search, progress, finished, ...(HAS_M9 ? M9_VIEWS : {}) }[view])(id, opts);
+  ({ dashboard, lesson, overview, search, progress, finished, ...(HAS_M9 ? M9_VIEWS : {}), ...(typeof TR_VIEWS !== 'undefined' ? TR_VIEWS : {}) }[view])(id, opts);
   renderAppBar();                                               // the install / iPhone banner follows the current progress
   document.querySelector('.foot').classList.toggle('off', view !== 'progress');   // "Powered by" only on the Settings tab
   // Next card of the same lesson, in the one-column layout: open at the "Phrase x of y" line, so the phrase and the
@@ -1659,7 +1664,7 @@ function finished(){
 
 document.getElementById('logoMark').innerHTML = ic('steth');
 // The third tab is "Settings": it holds the tutor key, backups and install steps as well as the progress summary.
-const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], progress: ['gear', 'Settings'] };
+const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], tr: ['languages', 'Translator'], progress: ['gear', 'Settings'] };
 document.querySelectorAll('#nav button').forEach(b => { const [i, t] = NAV[b.dataset.v]; b.innerHTML = `<span class="tab-ic">${ic(i)}</span><span>${t}</span>`; b.onclick = () => show(b.dataset.v); });
 show('dashboard');
 dailyBackup(); setInterval(dailyBackup, 60000);                     // catch up a missed 23:00, then check every minute
