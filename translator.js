@@ -21,12 +21,24 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
-var TR_VERSION = 'translator-test v9';
+var TR_VERSION = 'translator-test v10';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
 var TR_FIRST_DATA_MS = 120000, TR_ANSWER_MS = 300000;     // give up on a model that sends nothing for 2 minutes
-var TR_MODELS = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-4-hydrogen', 'gemini-flash-latest', 'gemini-3.5-flash-lite', 'gemini-flash-lite-latest'];
+// Only the accurate models. The lighter "lite" models made real translation mistakes in testing, so they are never used:
+// when the accurate ones are used up for the day, translating pauses until they are back (a wrong translation is never shown).
+var TR_MODELS = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash', 'gemini-4-hydrogen', 'gemini-flash-latest'];
+var trWeak = m => /lite/i.test(m || '');
+// Is an accurate model available? If not, when is the first one back (from Google's own "retry in" time)?
+function trGate(){
+  const avail = trModelsCache ? TR_MODELS.filter(m => trModelsCache.list[m]) : TR_MODELS;
+  if (!avail.length) return { ok: false, until: 0 };
+  if (avail.some(trQuotaOk)) return { ok: true };
+  return { ok: false, until: Math.min(...avail.map(m => trQuota()[m])) };
+}
+var trUntilText = until => { const mins = Math.max(1, Math.round((until - Date.now()) / 60000)), h = Math.floor(mins / 60), m = mins % 60;
+  return `${trWhen(until)} (in about ${h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`})`; };
 var TR_MIME = { mp3: 'audio/mp3', m4a: 'audio/m4a', mp4: 'audio/m4a', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/opus', flac: 'audio/flac', webm: 'audio/webm', aiff: 'audio/aiff', amr: null, '3gp': null };
 var TR_ICONS = {
   upload: '<path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>',
@@ -61,9 +73,10 @@ async function trTx(store, mode, fn){
 }
 var trGet = id => trTx('recs', 'readonly', s => s.get(id));
 var trAll = async () => (await trTx('recs', 'readonly', s => s.getAll()) || []).sort((a, b) => b.created - a.created);
-var trPut = rec => trTx('recs', 'readwrite', s => s.put(rec));
+var trDeleted = new Set();                                            // deleted in this visit: a job still finishing must not save them back
+var trPut = rec => trDeleted.has(rec.id) ? Promise.resolve() : trTx('recs', 'readwrite', s => s.put(rec));
 var trGetAudio = id => trTx('audio', 'readonly', s => s.get(id));
-async function trDelete(id){ await trTx('recs', 'readwrite', s => s.delete(id)); await trTx('audio', 'readwrite', s => s.delete(id)); }
+async function trDelete(id){ trDeleted.add(id); if (trCurRec?.id === id){ clearTimeout(trLogSave); trCtl?.abort(); } await trTx('recs', 'readwrite', s => s.delete(id)); await trTx('audio', 'readwrite', s => s.delete(id)); }
 
 /* ---------- Backups ----------
    Daily copy: every day at 23:00 (caught up the next time the page opens) the transcripts and results of every recording
@@ -98,6 +111,7 @@ async function trRestore(recordings){
   for (const item of recordings || []){
     const rec = item.rec || item; if (!rec || !rec.id || !rec.name){ skipped++; continue; }
     if (await trGet(rec.id)){ skipped++; continue; }
+    trDeleted.delete(rec.id);                                          // restoring it on purpose
     const r = { ...rec }; if (r.status !== 'done' && r.status !== 'failed'){ r.status = 'paused'; r.error = 'Restored from a backup. Tap Try again now to finish it.'; }
     if (item.audio && item.audio.data){ try { await trTx('audio', 'readwrite', st => st.put(trB64Blob(item.audio.data, item.audio.type || r.mime), r.id)); } catch {} }
     await trPut(r); added++;
@@ -141,7 +155,7 @@ async function trLog(rec, line, now){
   (rec.log = rec.log || []).push(`${new Date().toLocaleTimeString()} ${line}`); if (rec.log.length > 120) rec.log.splice(0, rec.log.length - 120);
   if (typeof trRunning !== 'undefined' && trRunning && rec === trCurRec){            // the phone may close the page at any moment: keep the log saved
     clearTimeout(trLogSave);
-    if (now) await trPut(rec).catch(() => {}); else trLogSave = setTimeout(() => trPut(rec).catch(() => {}), 250);
+    if (now) await trPut(rec).catch(() => {}); else trLogSave = setTimeout(() => { if (trRunning && rec === trCurRec) trPut(rec).catch(() => {}); }, 250);   // never after the job ended (it may have been deleted)
   }
 }
 
@@ -397,6 +411,11 @@ async function trRun(){
 // A recording that had finished but was put back to "working" (Try again on one part, in an older version) is finished
 // again, with that part to redo quietly. Returns true when it changed the record.
 function trFixFinished(r){
+  if ((r.models || []).some(trWeak) && (r.segments || r.parts?.length || r.summary || r.learn)){
+    for (const k of ['parts', 'segments', 'summary', 'learn', 'dropped', 'redo', 'redoNote', 'redoAt', 'doneAt']) delete r[k];
+    r.models = r.models.filter(m => !trWeak(m)); r.status = 'working'; r.error = ''; r.retryAt = 0;
+    trLog(r, 'results made with a lighter model were removed; it will be redone with an accurate model'); return true;
+  }
   if (r.status !== 'working' || !r.doneAt || !r.segments) return false;
   r.status = 'done'; r.redo = TR_SECTIONS.filter(k => r[k] === undefined || r[k]?.error); if (!r.redo.length) delete r.redo; return true;
 }
@@ -462,13 +481,13 @@ async function trProcess(rec){
       if (/^STOPPED/.test(e.message)){ delete rec.redo; await trPut(rec); return true; }
       if (e.offline){ trLog(rec, 'redo: connection lost; trying again in 30 s'); await trPut(rec); return false; }
       rec.redoAt = e.quota ? e.retryAt : Date.now() + 10 * 60000;
-      rec.redoNote = e.quota ? `Today's free Gemini limit is used up. It tries again by itself after ${trWhen(rec.redoAt)}.` : e.busy ? 'The free Gemini service is busy. It tries again by itself in about 10 minutes.' : trPlain(e);
+      rec.redoNote = e.quota ? `Paused: today's free limit for the accurate Gemini models is used up, and lighter models aren't used because they make mistakes. It tries again by itself at ${trUntilText(rec.redoAt)}.` : e.busy ? 'The free Gemini service is busy. It tries again by itself in about 10 minutes.' : trPlain(e);
       if (!e.quota && !e.busy) delete rec.redo;
       trLog(rec, 'redo: ' + e.message); await trPut(rec); return true;
     }
     if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.error = 'Stopped by you'; await trPut(rec); return true; }
     if (e.offline){ trLog(rec, 'connection still lost after several tries; trying again in 30 s, or when the page is opened'); rec.waitNet = Date.now(); await trPut(rec); return false; }
-    if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Today's free Gemini limit is used up. It continues by itself after ${trWhen(e.retryAt)} while the Translator is open.`; }
+    if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Paused: today's free limit for the accurate Gemini models is used up. Lighter models are still available, but they make translation mistakes, so they aren't used. It continues by itself at ${trUntilText(e.retryAt)} while the Translator is open.`; }
     else if (e.busy){ rec.status = 'waiting'; rec.retryAt = Date.now() + 10 * 60000; rec.error = 'The free Gemini service stayed busy. It tries again in about 10 minutes while the Translator is open.'; }
     else { rec.status = 'failed'; rec.error = trPlain(e); }
     trLog(rec, e.message); await trPut(rec); trNotify(rec);
@@ -500,15 +519,18 @@ addEventListener('offline', () => trEvent('went offline'));
 var trPicked = null, trViewing = null;
 function trHome(){
   trViewing = null;
-  const key = !!trKey();
+  const key = !!trKey(), gate = trGate(), can = key && gate.ok;
   $app.innerHTML = `<div class="tr">
     <div class="tr-head"><h1 class="title">Conversation Translator</h1>
-      <p class="muted">Upload a recorded conversation in Egyptian Arabic. You get the Arabic transcript, an English translation, a summary, explanations and phrases to learn.</p></div>
+      <p class="muted">Upload a recorded conversation in Egyptian Arabic. You get the Arabic transcript, an English translation, a summary and phrases to learn.</p></div>
+    ${key && !gate.ok ? `<div class="card tr-paused" id="trPaused">${trI('clock')}<div><b>Translating is paused${gate.until ? ` until ${trEsc(trWhen(gate.until))}` : ''}</b>
+      <p>Today's free limit for the accurate Gemini models is used up. Lighter models are still available, but in testing they made translation mistakes, so they aren't used: the Translator never shows a translation it can't trust.</p>
+      <p class="muted small">${gate.until ? `The accurate models are available again at ${trEsc(trUntilText(gate.until))}. You can choose a recording then.` : 'No accurate Gemini model is available for this key.'}</p></div></div>` : ''}
     ${key ? '' : `<div class="card tr-nokey">${trI('alert')}<div><b>Add your Gemini key first.</b><p class="muted">The Translator uses the same key as the voice tutor. Add it in Settings.</p></div><button class="btn primary" onclick="show('progress')">Open Settings</button></div>`}
     <section class="card tr-up" aria-labelledby="tr-up-h">
       <h2 id="tr-up-h" class="tr-h2">${trI('upload')}Upload a recording</h2>
       <div id="trPick">
-        <label class="btn ghost block tr-choose${key ? '' : ' tr-dis'}">${trI('wave')}<span>Choose an audio file</span><input type="file" id="trFile" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus,.flac,.webm" ${key ? '' : 'disabled'}></label>
+        <label class="btn ghost block tr-choose${can ? '' : ' tr-dis'}">${trI('wave')}<span>Choose an audio file</span><input type="file" id="trFile" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus,.flac,.webm" ${can ? '' : 'disabled'}></label>
         <p class="muted small">MP3, M4A, WAV, AAC or OGG, recorded on any device. Long recordings with several speakers are fine.</p>
       </div>
       <div id="trChosen" hidden></div>
@@ -526,7 +548,10 @@ function trHome(){
   document.getElementById('trSaveBk').onclick = trSaveBackupFile;
   const lb = document.getElementById('trLoadBk'); lb.onchange = () => { if (lb.files[0]) trLoadBackupFile(lb.files[0]); lb.value = ''; };
   trRefreshHome(); trDailyBackup().then(trRefreshBackups);
+  if (key && !trModelsCache) trModels().then(() => { if (document.getElementById('trFile') && trGate().ok !== gate.ok) trHome(); }).catch(() => {});
+  clearTimeout(trGateTimer); if (key && !gate.ok && gate.until) trGateTimer = setTimeout(() => { if (document.getElementById('trFile')) trHome(); }, Math.min(gate.until - Date.now() + 2000, 2147483000));
 }
+var trGateTimer = 0;
 function trChoose(f){
   if (!f) return;
   const ext = (f.name.split('.').pop() || '').toLowerCase(), mime = TR_MIME[ext] !== undefined ? TR_MIME[ext] : (/^audio\//.test(f.type) ? null : undefined);
@@ -549,6 +574,7 @@ function trChoose(f){
 }
 function trStart(){
   if (!trPicked) return;
+  if (!trGate().ok){ toast('Translating is paused until the accurate Gemini models are back.'); trPicked = null; trHome(); return; }
   trKeepAwake(true);                                                   // must start inside the tap
   try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission().then(() => trSW()); } catch {}
   const { file, mime, duration } = trPicked; trPicked = null;
@@ -694,7 +720,7 @@ function trReport(rec){
     phone: { installedApp: matchMedia('(display-mode: standalone)').matches, online: navigator.onLine, visible: document.visibilityState, screenOffMode: trAwake, screenOffAudioPlaying: !!(trAudioEl && !trAudioEl.paused),
       notifications: window.Notification ? Notification.permission : 'not available', browser: navigator.userAgent },
     freeLimitsUsedUp: Object.fromEntries(Object.entries(trQuota()).map(([m, t]) => [m, new Date(t).toString()])),
-    redo: rec.redo || [], redoNote: rec.redoNote || '', transcript: rec.segments || (rec.parts || []).flat(), summary: rec.summary, learn: rec.learn,
+    accurateModels: trGate().ok ? 'available' : 'used up until ' + new Date(trGate().until || 0).toString(), redo: rec.redo || [], redoNote: rec.redoNote || '', transcript: rec.segments || (rec.parts || []).flat(), summary: rec.summary, learn: rec.learn,
   };
   return JSON.stringify(r, null, 1);
 }

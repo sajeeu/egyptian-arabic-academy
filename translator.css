@@ -120,3 +120,8 @@
 .tr-bk{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--sunk)}
 .tr-bk b{display:block;font-size:14.5px} .tr-bk .muted{display:block}
 .tr-bk .btn{padding:8px 14px}
+/* Translating paused: only lighter models left */
+.tr-paused{display:flex;gap:12px;align-items:flex-start;border-color:var(--sand-pale);background:var(--sand-pale)}
+.tr-paused>.ic{color:var(--sand);margin-top:2px}
+.tr-paused b{display:block;font-size:16px;color:var(--ink)}
+.tr-paused p{margin:6px 0 0;line-height:1.5;color:var(--ink-2)}
