@@ -54,7 +54,7 @@ ul{margin:0;padding-left:20px} li{margin:3px 0}
 
   <section class="card"><h2>3. Run</h2>
     <button class="btn primary" id="run" disabled>Transcribe, translate and analyse</button>
-    <p class="sm muted">Long recordings are done in 10-minute parts, like the real Translator will.</p>
+    <p class="sm muted">Long recordings are done in 10-minute parts, like the real Translator will. Keep this page open with the screen on until it finishes.</p>
     <div id="status"></div><div id="log" hidden></div>
     <button class="btn" id="copy" hidden>Copy report</button>
     <p class="sm muted" id="copyNote" hidden>The report has the transcript, timings and any errors, never the key. Paste it in the chat with Claude.</p></section>
@@ -71,7 +71,7 @@ const API = 'https://generativelanguage.googleapis.com';
 const key = (() => { try { return localStorage.getItem('gemini_key') || ''; } catch { return ''; } })();
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const report = { page: 'translator-lab v1', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
+const report = { page: 'translator-lab v2', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
 let file = null, duration = 0, segs = [], view = 'sbs';
 const OUT = {};                                                       // each model's longest allowed answer
 
@@ -149,21 +149,63 @@ async function gen(model, parts, schema, label){
     ['responseJsonSchema', { responseMimeType: 'application/json', responseJsonSchema: schema }],
     ['json mode', { responseMimeType: 'application/json' }],
     ['plain', {}]];
-  let last;
-  for (const [how, cfg] of tries){
-    try {
-      const t0 = performance.now();
-      const { j } = await api(`/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { temperature: 0, maxOutputTokens: Math.min(OUT[model] || 8192, 65536), ...cfg } }) });
-      const cand = j.candidates?.[0]; const text = (cand?.content?.parts || []).map(p => p.text || '').join('');
-      report.usage.push({ step: label, how, seconds: +((performance.now() - t0) / 1000).toFixed(1), finish: cand?.finishReason, usage: j.usageMetadata });
-      const m = text.match(/\{[\s\S]*\}/); if (!m) throw new Error(`No JSON in answer (finish: ${cand?.finishReason}) ${text.slice(0, 200)}`);
-      log(`${label}: done with ${how} in ${((performance.now() - t0) / 1000).toFixed(0)} s (finish: ${cand?.finishReason})`);
-      return JSON.parse(m[0]);
-    } catch (e){ last = e; if (/^(400)/.test(e.message) && /schema|Unknown name|Invalid JSON payload|response/i.test(e.message)) { log(`${label}: ${how} not accepted, trying next way`); continue; } throw e; }
+  let last, start = 0;
+  for (let t = start; t < tries.length; t++){
+    const [how, cfg] = tries[t];
+    for (let attempt = 1; attempt <= 2; attempt++){
+      try {
+        const res = await streamGen(model, { contents: [{ role: 'user', parts }], generationConfig: { temperature: 0, maxOutputTokens: Math.min(OUT[model] || 8192, 65536), ...cfg } }, label);
+        report.usage.push({ step: label, how, attempt, seconds: res.seconds, firstByteSeconds: res.firstByte, finish: res.finish, usage: res.usage });
+        const m = res.text.match(/\{[\s\S]*\}/); if (!m) throw new Error(`No JSON in answer (finish: ${res.finish}) ${res.text.slice(0, 200)}`);
+        log(`${label}: done with ${how} in ${res.seconds} s, first data after ${res.firstByte} s (finish: ${res.finish})`);
+        return JSON.parse(m[0]);
+      } catch (e){
+        last = e;
+        if (/^(400)/.test(e.message) && /schema|Unknown name|Invalid JSON payload|response/i.test(e.message)) { log(`${label}: ${how} not accepted, trying next way`); break; }
+        if (e instanceof TypeError && attempt === 1){                    // the connection dropped (phone asleep, app switched, network): wait, then try once more
+          fail(label + ' (connection dropped, retrying once)', e); await backOnline(); continue; }
+        throw e;
+      }
+    }
+    if (!/^(400)/.test(last?.message || '')) throw last;
   }
   throw last;
 }
+// Streams the answer so data keeps flowing on slow answers, with a running timer on screen.
+async function streamGen(model, body, label){
+  const t0 = performance.now(); let firstByte = null, text = '', finish = null, usage = null, chars = 0;
+  const tick = setInterval(() => status(`<span class="pill warn">${esc(label)}: ${firstByte === null ? 'waiting for Gemini' : 'receiving'} · ${Math.round((performance.now() - t0) / 1000)} s${chars ? ` · ${chars} characters` : ''}</span> <span class="sm muted">Keep this page open with the screen on.</span>`), 1000);
+  try {
+    const r = await fetch(`${API}/v1beta/models/${model}:streamGenerateContent?alt=sse`, { method: 'POST', headers: hdr({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
+    if (!r.ok){ const tx = await r.text(); let j = null; try { j = JSON.parse(tx); } catch {} throw new Error(`${r.status} ${(j && (j.error || j[0]?.error)?.message) || tx.slice(0, 300)}`); }
+    const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
+    for (;;){
+      const { done, value } = await rd.read(); if (done) break;
+      if (firstByte === null) firstByte = +((performance.now() - t0) / 1000).toFixed(1);
+      buf += dec.decode(value, { stream: true });
+      let k; while ((k = buf.indexOf('\n')) >= 0){
+        const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
+        if (!line.startsWith('data:')) continue;
+        let j; try { j = JSON.parse(line.slice(5)); } catch { continue; }
+        if (j.error) throw new Error(`stream error ${j.error.code || ''} ${j.error.message || ''}`);
+        const c = j.candidates?.[0]; text += (c?.content?.parts || []).map(p => (p.thought ? '' : p.text || '')).join(''); chars = text.length;
+        if (c?.finishReason) finish = c.finishReason; if (j.usageMetadata) usage = j.usageMetadata;
+      }
+    }
+    return { text, finish, usage, firstByte, seconds: +((performance.now() - t0) / 1000).toFixed(1) };
+  } finally { clearInterval(tick); }
+}
+const backOnline = () => new Promise(res => { const ok = () => navigator.onLine && document.visibilityState === 'visible';
+  if (ok()) return setTimeout(res, 1500); log('Waiting for the page to be visible and online again…');
+  const f = () => { if (ok()){ document.removeEventListener('visibilitychange', f); removeEventListener('online', f); setTimeout(res, 1500); } };
+  document.addEventListener('visibilitychange', f); addEventListener('online', f); });
+// Keep the screen on while it works, and note in the report if the page was hidden or went offline.
+let wake = null;
+const keepAwake = async on => { try { if (on && 'wakeLock' in navigator && document.visibilityState === 'visible') wake = await navigator.wakeLock.request('screen'); else if (!on && wake){ await wake.release(); wake = null; } } catch (e){ log('Screen-on request not allowed: ' + e.message); } };
+let running = false;
+document.addEventListener('visibilitychange', () => { if (!running) return; log(`Page ${document.visibilityState === 'hidden' ? 'hidden (screen off or another app)' : 'visible again'}`); if (document.visibilityState === 'visible') keepAwake(true); });
+addEventListener('offline', () => running && log('Phone went offline'));
+addEventListener('online', () => running && log('Phone back online'));
 
 const SEG_SCHEMA = { type: 'object', properties: { segments: { type: 'array', items: { type: 'object', properties: {
   start: { type: 'string' }, end: { type: 'string' }, speaker: { type: 'string' }, role: { type: 'string' }, ar: { type: 'string' }, en: { type: 'string' },
@@ -199,7 +241,7 @@ ${transcript}`;
 
 $('run').onclick = async () => {
   const mime = MIME[(file.name.split('.').pop() || '').toLowerCase()], model = $('model').value;
-  $('run').disabled = true; $('log').textContent = ''; Object.assign(report, { started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
+  $('run').disabled = true; running = true; keepAwake(true); $('log').textContent = ''; Object.assign(report, { started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
   segs = []; ['out', 'sum', 'ctx', 'learn'].forEach(id => $(id).hidden = true);
   let fo = null, part;
   try {
@@ -223,8 +265,9 @@ $('run').onclick = async () => {
     status(`<span class="pill">Done</span> <span class="sm">${segs.length} segments, ${new Set(segs.map(s => s.speaker)).size} speakers.</span>`);
   } catch (e){ fail('run', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message)}</span>`); }
   finally {
-    if (fo) { try { await api('/v1beta/' + fo.name, { method: 'DELETE' }); log('Deleted the file from Gemini file storage.'); } catch (e){ fail('delete file', e); } }
-    $('run').disabled = false; $('copy').hidden = false; $('copyNote').hidden = false;
+    if (fo) { const del = () => api('/v1beta/' + fo.name, { method: 'DELETE' }).then(() => log('Deleted the file from Gemini file storage.'));
+      try { await del(); } catch (e){ fail('delete file', e); backOnline().then(del).catch(e2 => log('Could not delete it; Gemini removes it by itself within 48 hours.')); } }
+    running = false; keepAwake(false); $('run').disabled = false; $('copy').hidden = false; $('copyNote').hidden = false;
   }
 };
 
