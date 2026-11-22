@@ -275,7 +275,7 @@ var trSWp = null;
 function trSW(){ if (!('serviceWorker' in navigator)) return Promise.resolve(null); return trSWp || (trSWp = navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).catch(() => null)); }
 async function trNotify(rec){
   const body = rec.status === 'done' ? `${rec.name} · tap to see the translation` : `${rec.name} · ${rec.error || 'it stopped'}`;
-  try { if (window.Notification && Notification.permission === 'granted'){ const reg = await trSW(); if (reg){ await reg.showNotification(rec.status === 'done' ? 'Translation ready' : 'Translation paused', { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'tr-' + rec.id, data: { id: rec.id } }); return; } } } catch {}
+  try { if (window.Notification && Notification.permission === 'granted'){ const reg = await trSW(); if (reg){ await reg.showNotification(rec.status === 'done' ? 'Translation ready' : 'Translation paused', { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'tr-' + rec.id, data: { id: rec.id, url: location.pathname } }); return; } } } catch {}
   if (document.visibilityState === 'visible' && typeof toast === 'function') toast(rec.status === 'done' ? `Translation ready: ${trEsc(rec.name)}` : `Translation paused: ${trEsc(rec.error || '')}`);
 }
 
@@ -344,8 +344,8 @@ async function trProcess(rec){
   } catch (e){
     if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.error = 'Stopped by you'; await trPut(rec); return true; }
     if (e.offline){ trLog(rec, 'connection lost; continues when the app is back'); await trPut(rec); return false; }
-    if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Today's free Gemini limit is used up. It continues by itself after ${trWhen(e.retryAt)} when the app is open.`; }
-    else if (e.busy){ rec.status = 'waiting'; rec.retryAt = Date.now() + 10 * 60000; rec.error = 'The free Gemini service stayed busy. It tries again in about 10 minutes while the app is open.'; }
+    if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Today's free Gemini limit is used up. It continues by itself after ${trWhen(e.retryAt)} while the Translator is open.`; }
+    else if (e.busy){ rec.status = 'waiting'; rec.retryAt = Date.now() + 10 * 60000; rec.error = 'The free Gemini service stayed busy. It tries again in about 10 minutes while the Translator is open.'; }
     else { rec.status = 'failed'; rec.error = trPlain(e); }
     trLog(rec, e.message); await trPut(rec); trNotify(rec);
     return true;
@@ -477,7 +477,7 @@ async function trRefreshLoader(){
   } else {
     spin.classList.add('off'); document.getElementById('trElapsed').textContent = '';
     title.textContent = state === 'failed' ? 'Translation stopped' : state === 'paused' ? 'Translation stopped' : state === 'waiting' ? 'Translation is waiting' : 'Translation will continue';
-    html = trEsc(rec.error || (state === 'working' ? 'It continues automatically while the app is open.' : ''));
+    html = trEsc(rec.error || (state === 'working' ? 'It continues automatically while the Translator is open.' : ''));
     b += `<button class="btn primary block" id="trGo">${trI('play')}${state === 'working' ? 'Continue now' : 'Try again now'}</button>`;
     b += `<button class="btn danger block" id="trDel">${trI('trash', 'sm')}Delete this recording</button>`;
   }
