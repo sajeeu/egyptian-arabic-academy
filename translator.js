@@ -21,7 +21,7 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
-var TR_VERSION = 'translator-test v7';
+var TR_VERSION = 'translator-test v8';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -49,8 +49,8 @@ var trWhen = ms => new Date(ms).toLocaleString([], { day: 'numeric', month: 'sho
 var trDBp = null;
 function trDB(){
   return trDBp || (trDBp = new Promise((res, rej) => {
-    const r = indexedDB.open('eaa_translator', 1);
-    r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('recs')) d.createObjectStore('recs', { keyPath: 'id' }); if (!d.objectStoreNames.contains('audio')) d.createObjectStore('audio'); };
+    const r = indexedDB.open('eaa_translator', 2);
+    r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains('recs')) d.createObjectStore('recs', { keyPath: 'id' }); if (!d.objectStoreNames.contains('audio')) d.createObjectStore('audio'); if (!d.objectStoreNames.contains('backups')) d.createObjectStore('backups', { keyPath: 'slot' }); };
     r.onsuccess = () => res(r.result); r.onerror = () => { trDBp = null; rej(r.error); };
   }));
 }
@@ -64,6 +64,78 @@ var trAll = async () => (await trTx('recs', 'readonly', s => s.getAll()) || []).
 var trPut = rec => trTx('recs', 'readwrite', s => s.put(rec));
 var trGetAudio = id => trTx('audio', 'readonly', s => s.get(id));
 async function trDelete(id){ await trTx('recs', 'readwrite', s => s.delete(id)); await trTx('audio', 'readwrite', s => s.delete(id)); }
+
+/* ---------- Backups ----------
+   Daily copy: every day at 23:00 (caught up the next time the page opens) the transcripts and results of every recording
+   are copied into this browser; the last 7 days are kept. Audio is not copied (it would fill the phone), so a recording
+   restored from a daily copy can't be replayed unless its audio is still here.
+   Backup file: everything, audio included, in one file to keep somewhere safe; loading it adds what is missing. */
+var trSlot = () => { const now = new Date(), due = new Date(now); if (now.getHours() < 23) due.setDate(due.getDate() - 1);
+  return `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`; };
+var trBackups = async () => (await trTx('backups', 'readonly', s => s.getAll()) || []).sort((a, b) => b.slot.localeCompare(a.slot));
+async function trDailyBackup(){
+  try {
+    const slot = trSlot(), list = await trBackups();
+    if (list[0] && list[0].slot >= slot) return false;                 // already copied for that 23:00
+    const recs = (await trAll()).map(r => { const c = { ...r }; delete c.parts; return c; });
+    if (!recs.length) return false;
+    await trTx('backups', 'readwrite', st => st.put({ slot, at: Date.now(), recs }));
+    for (const old of list.slice(6)) await trTx('backups', 'readwrite', st => st.delete(old.slot));   // keep 7
+    return true;
+  } catch { return false; }
+}
+var trBlobB64 = b => new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(',')[1] || ''); f.onerror = rej; f.readAsDataURL(b); });
+var trB64Blob = (d, type) => { const bin = atob(d), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new Blob([u], { type }); };
+async function trBuildBackup(){
+  const recordings = [];
+  for (const r of await trAll()){ const a = await trGetAudio(r.id).catch(() => null), c = { ...r }; delete c.parts;
+    recordings.push({ rec: c, audio: a ? { type: a.type || r.mime, data: await trBlobB64(a) } : null }); }
+  return { kind: 'egyptian-academy-translator-backup', version: 1, savedAt: new Date().toISOString(), recordings };
+}
+// Adds recordings that aren't here; never changes or removes the ones already here. Returns { added, skipped }.
+async function trRestore(recordings){
+  let added = 0, skipped = 0;
+  for (const item of recordings || []){
+    const rec = item.rec || item; if (!rec || !rec.id || !rec.name){ skipped++; continue; }
+    if (await trGet(rec.id)){ skipped++; continue; }
+    const r = { ...rec }; if (r.status !== 'done' && r.status !== 'failed'){ r.status = 'paused'; r.error = 'Restored from a backup. Tap Try again now to finish it.'; }
+    if (item.audio && item.audio.data){ try { await trTx('audio', 'readwrite', st => st.put(trB64Blob(item.audio.data, item.audio.type || r.mime), r.id)); } catch {} }
+    await trPut(r); added++;
+  }
+  return { added, skipped };
+}
+async function trSaveBackupFile(){
+  try {
+    const recs = await trAll(); if (!recs.length){ toast('There are no recordings to back up yet.'); return; }
+    toast('Preparing the backup file…');
+    const data = JSON.stringify(await trBuildBackup()), d = new Date();
+    const name = `translator-backup-${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}.json`;
+    const url = URL.createObjectURL(new Blob([data], { type: 'application/json' })), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    toast(`Backup file saved: ${trEsc(name)} (${(data.length / 1048576).toFixed(1)} MB, ${recs.length} ${recs.length === 1 ? 'recording' : 'recordings'})`);
+  } catch (e){ toast('The backup file could not be made: ' + trEsc(e.message)); }
+}
+async function trLoadBackupFile(file){
+  try {
+    const obj = JSON.parse(await file.text());
+    if (obj.kind !== 'egyptian-academy-translator-backup' || !Array.isArray(obj.recordings)) throw new Error('this is not a Translator backup file');
+    const r = await trRestore(obj.recordings);
+    toast(`Backup loaded: ${r.added} ${r.added === 1 ? 'recording' : 'recordings'} added${r.skipped ? `, ${r.skipped} already here` : ''}.`);
+  } catch (e){ toast('That file could not be loaded: ' + trEsc(e.message)); }
+  trRefreshHome(); trRefreshBackups();
+}
+async function trRefreshBackups(){
+  const box = document.getElementById('trDaily'); if (!box) return;
+  let list = []; try { list = await trBackups(); } catch {}
+  if (!document.getElementById('trDaily')) return;
+  box.innerHTML = list.length ? list.map(b => `<div class="tr-bk"><div class="grow"><b>${trEsc(new Date(b.slot + 'T23:00').toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' }))}, 23:00</b>
+      <span class="muted small">${b.recs.length} ${b.recs.length === 1 ? 'recording' : 'recordings'} · transcripts and results, no audio</span></div><button class="btn ghost" data-slot="${b.slot}">Restore</button></div>`).join('')
+    : '<p class="muted small">No daily copy yet. The first one is made at 23:00 (or the next time you open this page after that).</p>';
+  box.querySelectorAll('[data-slot]').forEach(b => b.onclick = async () => {
+    const bk = list.find(x => x.slot === b.dataset.slot); const r = await trRestore(bk.recs);
+    toast(r.added ? `Restored ${r.added} ${r.added === 1 ? 'recording' : 'recordings'} from ${trEsc(b.dataset.slot)}.` : 'Nothing to restore: every recording in that copy is already here.');
+    trRefreshHome(); });
+}
 async function trLog(rec, line){ (rec.log = rec.log || []).push(`${new Date().toLocaleTimeString()} ${line}`); if (rec.log.length > 80) rec.log.splice(0, rec.log.length - 80); }
 
 /* ---------- Which free models are used up today ---------- */
@@ -408,6 +480,7 @@ addEventListener('load', () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data?.trOpen) show('trrec', e.data.trOpen); });
   try { const q = new URLSearchParams(location.search), id = q.get('tr'); if (id){ q.delete('tr'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); show('trrec', id); } } catch {}
   setTimeout(trResume, 1500);
+  trDailyBackup(); setInterval(trDailyBackup, 60000);
 });
 function trEvent(text){ if (trRunning && trCurRec) trLog(trCurRec, 'phone: ' + text); }
 document.addEventListener('visibilitychange', () => { trEvent(document.visibilityState === 'hidden' ? 'page hidden (screen off or another app)' : 'page visible again'); if (document.visibilityState === 'visible') trResume(); });
@@ -434,9 +507,16 @@ function trHome(){
     <section class="tr-hist" aria-labelledby="tr-hist-h">
       <div class="tr-hist-top"><h2 id="tr-hist-h" class="tr-h2">History</h2></div>
       <div id="trList" class="tr-list"><p class="muted small">Loading…</p></div>
-    </section></div>`;
+    </section>
+    <details class="card tr-backup" id="trBackup"><summary><span class="tr-h2" style="margin:0">Backup</span>${trI('chev', 'tr-chev')}</summary>
+      <p class="muted small">Recordings are kept only on this phone. Every day at 23:00 a copy of the transcripts and results is saved here (the last 7 days). To keep everything, audio included, save a backup file somewhere safe.</p>
+      <div class="tr-bk-btns"><button class="btn primary" id="trSaveBk">Save backup file</button><label class="btn ghost tr-loadbk">Load backup file<input type="file" id="trLoadBk" accept=".json,application/json"></label></div>
+      <h3 class="tr-h3">Daily copies</h3><div id="trDaily" class="tr-daily"><p class="muted small">Loading…</p></div>
+    </details></div>`;
   const inp = document.getElementById('trFile'); if (inp) inp.onchange = () => trChoose(inp.files[0]);
-  trRefreshHome();
+  document.getElementById('trSaveBk').onclick = trSaveBackupFile;
+  const lb = document.getElementById('trLoadBk'); lb.onchange = () => { if (lb.files[0]) trLoadBackupFile(lb.files[0]); lb.value = ''; };
+  trRefreshHome(); trDailyBackup().then(trRefreshBackups);
 }
 function trChoose(f){
   if (!f) return;

@@ -107,3 +107,16 @@
 .tr-group[open] .tr-chev{transform:rotate(180deg)}
 .tr-group-list{display:flex;flex-direction:column;gap:8px;padding:0 10px 10px}
 .tr-group-list .tr-row{box-shadow:none}
+/* Backup: a backup file (with audio) and the daily copies */
+.tr-backup{display:flex;flex-direction:column;gap:10px}
+.tr-backup>summary{display:flex;align-items:center;justify-content:space-between;cursor:pointer;list-style:none}
+.tr-backup>summary::-webkit-details-marker{display:none}
+.tr-backup[open] .tr-chev{transform:rotate(180deg)}
+.tr-backup p{margin:10px 0 0;line-height:1.5}
+.tr-bk-btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.tr-loadbk{position:relative;cursor:pointer}
+.tr-loadbk input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.tr-daily{display:flex;flex-direction:column;gap:8px}
+.tr-bk{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--sunk)}
+.tr-bk b{display:block;font-size:14.5px} .tr-bk .muted{display:block}
+.tr-bk .btn{padding:8px 14px}
