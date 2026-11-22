@@ -12,16 +12,10 @@
    or in another app (Android treats it like a music app), and the phone's media notification shows the progress.
    A notification says when it is ready. */
 
-var TR_ON = (function(){
-  try {
-    const q = new URLSearchParams(location.search), v = q.get('translator');
-    if (v === 'on') localStorage.setItem('eaa_translator', '1');
-    if (v === 'off') localStorage.removeItem('eaa_translator');
-    if (v){ q.delete('translator'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + location.hash); }
-    return localStorage.getItem('eaa_translator') === '1';
-  } catch { return false; }
-})();
-var TR_VERSION = 'translator-test v11';
+var TR_ON = true;
+var TR_APP = typeof TR_IN_APP !== 'undefined' && !!TR_IN_APP;   // part of the app: its Settings backup covers recordings too
+try { localStorage.removeItem('eaa_translator'); } catch {}       // the old preview switch is no longer used
+var TR_VERSION = TR_APP ? 'translator v1 (app)' : 'translator-test v12';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -509,7 +503,7 @@ addEventListener('load', () => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data?.trOpen) show('trrec', e.data.trOpen); });
   try { const q = new URLSearchParams(location.search), id = q.get('tr'); if (id){ q.delete('tr'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); show('trrec', id); } } catch {}
   setTimeout(trResume, 1500);
-  trDailyBackup(); setInterval(trDailyBackup, 60000);
+  if (!TR_APP){ trDailyBackup(); setInterval(trDailyBackup, 60000); }   // in the app, its daily backup makes this copy
 });
 function trEvent(text){ if (trRunning && trCurRec) trLog(trCurRec, 'phone: ' + text, /hidden|paused|offline/.test(text)); }
 document.addEventListener('visibilitychange', () => { trEvent(document.visibilityState === 'hidden' ? 'page hidden (screen off or another app)' : 'page visible again'); if (document.visibilityState === 'visible') trResume(); });
@@ -539,15 +533,18 @@ function trHome(){
       <div class="tr-hist-top"><h2 id="tr-hist-h" class="tr-h2">History</h2></div>
       <div id="trList" class="tr-list"><p class="muted small">Loading…</p></div>
     </section>
-    <details class="card tr-backup" id="trBackup"><summary><span class="tr-h2" style="margin:0">Backup</span>${trI('chev', 'tr-chev')}</summary>
+    ${TR_APP ? '' : `<details class="card tr-backup" id="trBackup"><summary><span class="tr-h2" style="margin:0">Backup</span>${trI('chev', 'tr-chev')}</summary>
       <p class="muted small">Recordings are kept only on this phone. Every day at 23:00 a copy of the transcripts and results is saved here (the last 7 days). To keep everything, audio included, save a backup file somewhere safe.</p>
       <div class="tr-bk-btns"><button class="btn primary" id="trSaveBk">Save backup file</button><label class="btn ghost tr-loadbk">Load backup file<input type="file" id="trLoadBk" accept=".json,application/json"></label></div>
       <h3 class="tr-h3">Daily copies</h3><div id="trDaily" class="tr-daily"><p class="muted small">Loading…</p></div>
-    </details></div>`;
+    </details>`}</div>`;
   const inp = document.getElementById('trFile'); if (inp) inp.onchange = () => trChoose(inp.files[0]);
-  document.getElementById('trSaveBk').onclick = trSaveBackupFile;
-  const lb = document.getElementById('trLoadBk'); lb.onchange = () => { if (lb.files[0]) trLoadBackupFile(lb.files[0]); lb.value = ''; };
-  trRefreshHome(); trDailyBackup().then(trRefreshBackups);
+  if (!TR_APP){
+    document.getElementById('trSaveBk').onclick = trSaveBackupFile;
+    const lb = document.getElementById('trLoadBk'); lb.onchange = () => { if (lb.files[0]) trLoadBackupFile(lb.files[0]); lb.value = ''; };
+    trDailyBackup().then(trRefreshBackups);
+  }
+  trRefreshHome();
   if (key && !trModelsCache) trModels().then(() => { if (document.getElementById('trFile') && trGate().ok !== gate.ok) trHome(); }).catch(() => {});
   clearTimeout(trGateTimer); if (key && !gate.ok && gate.until) trGateTimer = setTimeout(() => { if (document.getElementById('trFile')) trHome(); }, Math.min(gate.until - Date.now() + 2000, 2147483000));
 }

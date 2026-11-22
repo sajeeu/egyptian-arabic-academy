@@ -14,7 +14,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="m9.css?v=20261122a">
+<link rel="stylesheet" href="m9.css?v=20261123a">
+<link rel="stylesheet" href="translator.css?v=20261123a">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
@@ -455,7 +456,7 @@ details .list{padding:0 0 10px}
 .bk-list{display:flex;flex-direction:column;gap:8px}
 .bk-row{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;padding:14px 14px 14px 16px}
 .bk-row>div{flex:1 1 168px;min-width:0;display:flex;flex-direction:column;gap:2px}
-.bk-row>div b{font-size:14px;font-variant-numeric:tabular-nums} .bk-row>div span{font-size:13px;font-weight:500;color:var(--muted)}
+.bk-row>div b{font-size:14px;font-variant-numeric:tabular-nums} .bk-row>div span{font-size:13px;font-weight:500;color:var(--muted)} .bk-tr{font-style:normal}
 #stateMsg .note,#stateMsg .warn,#bkMsg .note,#bkMsg .warn{margin-top:0}
 #stateMsg:empty,#bkMsg:empty{display:none}
 
@@ -548,7 +549,7 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 /* Phone: navigation moves to a bottom tab bar */
 @media (max-width:620px){
   .top{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}  /* a blur here would trap the fixed tab bar inside the header */
-  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;background:var(--surface);border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom))}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:30;display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px;background:var(--surface);border-top:1px solid var(--line);padding:6px max(10px,env(safe-area-inset-left)) calc(6px + env(safe-area-inset-bottom))}
   nav button{flex-direction:column;justify-content:center;gap:3px;min-height:52px;font-size:12px;padding:0;color:var(--muted)}
   nav button:hover,nav button.on,nav button.on:hover{background:none}
   nav button.on{color:var(--pale-ink)}
@@ -573,6 +574,7 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
     <nav id="nav">
       <button data-v="dashboard"></button>
       <button data-v="search"></button>
+      <button data-v="tr" hidden></button>
       <button data-v="progress"></button>
     </nav>
   </div>
@@ -585,14 +587,19 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <!-- ?v= is the release stamp: change it (here and on m9.css) whenever any of these files change, so phones fetch the new copy instead of a saved one. -->
-<script src="curriculum.js?v=20261122a"></script>
+<script src="curriculum.js?v=20261123a"></script>
 <!-- Module 09 (Pediatrics): lesson data, then its pages. The app still runs as Modules 01-08 if these fail to load. -->
-<script src="module9.js?v=20261122a"></script>
-<script src="m9.js?v=20261122a"></script>
+<script src="module9.js?v=20261123a"></script>
+<script src="m9.js?v=20261123a"></script>
+<!-- Conversation Translator (its own tab). The app runs as before if it fails to load. Its recordings are kept in their own
+     storage (never the lesson progress) and are included in Settings > Daily backup and the backup file. -->
+<script>var TR_IN_APP = true;</script>
+<script src="translator.js?v=20261123a"></script>
 <script>
 /* ---------- State ---------- */
 const KEY = 'egyptian_academy_v92';
-const HAS_M9 = typeof M9_VIEWS !== 'undefined' && !!M9_VIEWS;   // Module 09 is loaded (m9.js added its lessons to CURRICULUM)
+const HAS_M9 = typeof M9_VIEWS !== 'undefined' && !!M9_VIEWS;
+const HAS_TR = typeof TR_VIEWS !== 'undefined' && !!TR_VIEWS;   // the Conversation Translator is loaded (translator.js)   // Module 09 is loaded (m9.js added its lessons to CURRICULUM)
 const byId = Object.fromEntries(CURRICULUM.map(l => [l.id, l]));
 // Totals come from the curriculum, so adding a module later needs no other change.
 const MODULES = [...new Set(CURRICULUM.map(l => l.module))].sort((a, b) => a - b);
@@ -631,6 +638,7 @@ const snapshotText = st => `ACADEMY_STATE_V9\n${JSON.stringify(st)}`;
 function parseSnapshot(text){
   try {
     const obj = JSON.parse(String(text).replace(/^\s*ACADEMY_STATE_V9\s*/, ''));
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj) || 'kind' in obj || !('completed' in obj || 'lessons' in obj)) return null;   // not a progress snapshot
     const ok = (obj.completed || []).every(i => byId[i]) && Object.entries(obj.lessons || {}).every(([i, x]) =>
       byId[i] && Number.isInteger(x.idx) && x.idx >= 1 && x.idx <= byId[i].ex.length && Array.isArray(x.confirmed));
     return ok ? { ...freshState(), ...obj } : null;
@@ -644,6 +652,7 @@ const BKEY = 'egyptian_academy_backups';
 const backups = () => { try { return JSON.parse(localStorage.getItem(BKEY)) || []; } catch { return []; } };
 const dayKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 function dailyBackup(){
+  if (HAS_TR) trDailyBackup();                                     // Translator transcripts and results for the same 23:00 (its own storage)
   const now = new Date(), due = new Date(now);
   if (now.getHours() < 23) due.setDate(due.getDate() - 1);           // the most recent 23:00 that has passed
   const slot = dayKey(due), list = backups();
@@ -1037,6 +1046,7 @@ const ICONS = {
   pin: '<path d="M12 21s-7-6.5-7-12a7 7 0 0 1 14 0c0 5.5-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>',
   flame: '<path d="M12 21a7 7 0 0 0 7-7c0-4-3-6-4-10-2 2-3 4-3 6-1-1-2-2-2-4-2 2-5 5-5 8a7 7 0 0 0 7 7z"/>',
+  languages: '<path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/>',
 };
 function ic(name, cls = ''){ return `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`; }
 const note = (icon, html) => `<div class="note">${ic(icon)}<div>${html}</div></div>`;
@@ -1064,10 +1074,10 @@ const ring = (done, total, size = 64) => { const r = size / 2 - 5, c = 2 * Math.
 function show(view, id, opts = {}){
   stopTutor(); if ('speechSynthesis' in window) speechSynthesis.cancel();
   document.getElementById('m9sheet')?.remove();                 // Module 09's first-open note never stays over another page
-  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || ((view === 'lesson' || view === 'overview' || view.startsWith('m9')) && b.dataset.v === 'dashboard')));
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || (view.startsWith('tr') && b.dataset.v === 'tr') || ((view === 'lesson' || view === 'overview' || view.startsWith('m9')) && b.dataset.v === 'dashboard')));
   $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
   document.body.classList.toggle('on-settings', view === 'progress');   // see .pgw in the styles
-  ({ dashboard, lesson, overview, search, progress, finished, ...(HAS_M9 ? M9_VIEWS : {}) }[view])(id, opts);
+  ({ dashboard, lesson, overview, search, progress, finished, ...(HAS_M9 ? M9_VIEWS : {}), ...(HAS_TR ? TR_VIEWS : {}) }[view])(id, opts);
   renderAppBar();                                               // the install / iPhone banner follows the current progress
   document.querySelector('.foot').classList.toggle('off', view !== 'progress');   // "Powered by" only on the Settings tab
   // Next card of the same lesson, in the one-column layout: open at the "Phrase x of y" line, so the phrase and the
@@ -1553,13 +1563,13 @@ function progress(_, opts){
       <details class="card pfold o4" id="backupCard" aria-labelledby="backup-h"${FOLD.backupCard ? ' open' : ''}>
         ${foldHead('backup-h', 'clock', 'Daily backup', (() => { const b = backups()[0]; if (!b) return 'No backup yet'; const t = new Date(b.at);
           return 'Last saved ' + esc(t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5)); })())}
-        <div class="pfold-in"><p class="pdesc">A copy of your progress is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so it's a good idea to save a backup file from time to time as well.</p>
+        <div class="pfold-in"><p class="pdesc">A copy of your progress${HAS_TR ? ' and your Translator transcripts and results' : ''} is saved in this browser every day at 23:00, and the last 7 are kept. If the app is closed at 23:00, the copy is made the next time you open it. Clearing this browser's data also erases these copies, so it's a good idea to save a backup file from time to time as well${HAS_TR ? ' (it also keeps the recordings\' audio)' : ''}.</p>
         ${(() => { const list = backups();
           if (!list.length) return `<p class="pdesc">No daily backup yet. The first one is saved at 23:00 after you start a lesson.</p>`;
           const row = (b, i) => { const t = new Date(b.at);      // when the copy was actually made
             const when = t.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) + ', ' + t.toTimeString().slice(0, 5);
             const bp = Object.values(b.state.lessons || {}).reduce((a, x) => a + x.confirmed.length, 0);
-            return `<div class="tint bk-row"><div><b>Saved ${esc(when)}</b><span>${(b.state.completed || []).length}/${N_LESSONS} lessons complete · ${bp} ${bp === 1 ? 'phrase' : 'phrases'} confirmed</span></div>
+            return `<div class="tint bk-row" data-slot="${esc(b.slot)}"><div><b>Saved ${esc(when)}</b><span>${(b.state.completed || []).length}/${N_LESSONS} lessons complete · ${bp} ${bp === 1 ? 'phrase' : 'phrases'} confirmed<i class="bk-tr"></i></span></div>
               <button class="btn ghost again" data-bk="${i}">${ic('retry', 'sm')}Restore</button></div>`; };
           // The newest backup is always shown; older ones fold away until asked for.
           const older = list.length - 1;
@@ -1568,12 +1578,15 @@ function progress(_, opts){
         <div class="row pair">
           <button class="btn pale" id="saveFile">${ic('download', 'sm')}Save backup file</button>
           <label class="btn ghost" for="loadFile">${ic('upload', 'sm')}Load backup file</label>
-          <input type="file" id="loadFile" accept=".txt,text/plain" hidden>
+          <input type="file" id="loadFile" accept=".txt,.json,text/plain,application/json" hidden>
         </div>
         <div id="bkMsg"></div>
       </div></details>
     </div></div></div>`;
   ['moveCard', 'backupCard'].forEach(id => { const d = document.getElementById(id); d.addEventListener('toggle', e => { if (e.target === d) FOLD[id] = d.open; }); });
+  // Each daily row also says how many Translator recordings that day's copy holds.
+  if (HAS_TR) trBackups().then(list => document.querySelectorAll('.bk-row[data-slot]').forEach(r => { const t = list.find(x => x.slot === r.dataset.slot), i = r.querySelector('.bk-tr');
+    if (t && i && t.recs.length) i.textContent = ` · ${t.recs.length} Translator ${t.recs.length === 1 ? 'recording' : 'recordings'}`; })).catch(() => {});
   const bkMore = document.getElementById('bkMore');      // the fold's label follows its state
   if (bkMore) bkMore.addEventListener('toggle', () => { const s = bkMore.querySelector('summary span'), n = backups().length - 1;
     s.textContent = bkMore.open ? `Hide older ${n === 1 ? 'backup' : 'backups'}` : `Show ${n} older ${n === 1 ? 'backup' : 'backups'}`; });
@@ -1595,27 +1608,44 @@ function progress(_, opts){
     S = st; save(); show('dashboard'); toast('Progress loaded.');
   };
 
-  // Backups: restore a daily copy (tap twice), or save / load a backup file (same text as the snapshot above).
+  // Backups: restore a daily copy (tap twice), or save / load a backup file.
   const bkMsg = h => document.getElementById('bkMsg').innerHTML = h;
   document.querySelectorAll('[data-bk]').forEach(b => b.onclick = async () => {
     const bk = backups()[+b.dataset.bk], when = b.closest('.bk-row').querySelector('b').textContent.replace(/^Saved /, '');
-    if (!await confirmModal({ title: 'Restore this backup?', text: `Your progress goes back to how it was on ${esc(when)}. Anything you did after that is replaced.`, yes: 'Yes, restore', icon: 'retry' })) return;
+    if (!await confirmModal({ title: 'Restore this backup?', text: `Your progress goes back to how it was on ${esc(when)}. Anything you did after that is replaced.${HAS_TR ? ' Translator recordings deleted since then come back; the others stay as they are.' : ''}`, yes: 'Yes, restore', icon: 'retry' })) return;
     const st = parseSnapshot(snapshotText(bk.state));
     if (!st) return bkMsg(warn("That backup couldn't be read. Nothing was changed."));
-    S = st; save(); show('dashboard'); toast('Progress restored from the daily backup.');
+    S = st; save();
+    let tr = null; if (HAS_TR){ try { const t = (await trBackups()).find(x => x.slot === bk.slot); if (t) tr = await trRestore(t.recs); } catch {} }
+    show('dashboard'); toast(`Progress restored from the daily backup.${tr?.added ? ` ${tr.added} Translator ${tr.added === 1 ? 'recording' : 'recordings'} brought back.` : ''}`);
   });
-  document.getElementById('saveFile').onclick = () => {
+  // One backup file: the progress, plus every Translator recording with its audio. Without recordings it is the same
+  // progress-only text file as before. Loading reads both kinds, and a Translator-only file from the test page.
+  document.getElementById('saveFile').onclick = async () => {
+    const b = document.getElementById('saveFile');
+    let tr = null; if (HAS_TR){ try { if ((await trAll()).length){ b.disabled = true; bkMsg(note('clock', 'Preparing the backup file…')); tr = await trBuildBackup(); } } catch { tr = null; } b.disabled = false; }
+    const text = tr ? JSON.stringify({ kind: 'egyptian-academy-backup', version: 10, savedAt: new Date().toISOString(), progress: S, translator: tr }) : snapshotText(S);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([snapshotText(S)], { type: 'text/plain' }));
-    a.download = `egyptian-arabic-academy-backup-${dayKey(new Date())}.txt`;
+    a.href = URL.createObjectURL(new Blob([text], { type: tr ? 'application/json' : 'text/plain' }));
+    a.download = `egyptian-arabic-academy-backup-${dayKey(new Date())}.${tr ? 'json' : 'txt'}`;
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 10000);
-    bkMsg(note('check', 'Your backup file is downloading. Keep it somewhere safe, for example email it to yourself. To use it, tap <b>Load backup file</b>.'));
+    bkMsg(note('check', `Your backup file is downloading${tr ? ` (your progress and ${tr.recordings.length} Translator ${tr.recordings.length === 1 ? 'recording' : 'recordings'} with audio)` : ''}. Keep it somewhere safe, for example email it to yourself. To use it, tap <b>Load backup file</b>.`));
   };
   document.getElementById('loadFile').onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
-    const st = parseSnapshot(await f.text()); e.target.value = '';
-    if (!st) return bkMsg(warn("That file isn't an Egyptian Arabic Academy backup. Nothing was changed."));
-    S = st; save(); show('dashboard'); toast('Progress loaded from the backup file.');
+    const text = await f.text(); e.target.value = '';
+    let obj = null; try { obj = JSON.parse(text); } catch {}
+    let st = null, recs = null;
+    if (obj && obj.kind === 'egyptian-academy-backup'){                // one file: progress + Translator recordings
+      st = parseSnapshot(snapshotText(obj.progress)); recs = obj.translator?.recordings || [];
+      if (!st) return bkMsg(warn("That backup file couldn't be read. Nothing was changed.")); }
+    else if (obj && obj.kind === 'egyptian-academy-translator-backup'){  // Translator recordings only: the progress is left alone
+      if (!HAS_TR) return bkMsg(warn("That file is a Translator backup. Nothing was changed."));
+      const r = await trRestore(obj.recordings); return bkMsg(note('check', `Translator backup loaded: ${r.added} ${r.added === 1 ? 'recording' : 'recordings'} added${r.skipped ? `, ${r.skipped} already here` : ''}. Your progress wasn't changed.`)); }
+    else { st = parseSnapshot(text); if (!st) return bkMsg(warn("That file isn't an Egyptian Arabic Academy backup. Nothing was changed.")); }
+    S = st; save();
+    let r = null; if (recs && HAS_TR){ try { r = await trRestore(recs); } catch {} }
+    show('dashboard'); toast(`Progress loaded from the backup file.${r?.added ? ` ${r.added} Translator ${r.added === 1 ? 'recording' : 'recordings'} added.` : ''}`);
   };
   document.getElementById('installBtn').onclick = async () => {
     if (!installPrompt) return;
@@ -1659,7 +1689,7 @@ function finished(){
 
 document.getElementById('logoMark').innerHTML = ic('steth');
 // The third tab is "Settings": it holds the tutor key, backups and install steps as well as the progress summary.
-const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], progress: ['gear', 'Settings'] };
+const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], tr: ['languages', 'Translator'], progress: ['gear', 'Settings'] };
 document.querySelectorAll('#nav button').forEach(b => { const [i, t] = NAV[b.dataset.v]; b.innerHTML = `<span class="tab-ic">${ic(i)}</span><span>${t}</span>`; b.onclick = () => show(b.dataset.v); });
 show('dashboard');
 dailyBackup(); setInterval(dailyBackup, 60000);                     // catch up a missed 23:00, then check every minute
