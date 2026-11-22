@@ -21,7 +21,8 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
-var TR_VERSION = 'translator-test v2';
+var TR_VERSION = 'translator-test v3';
+var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
 var TR_FIRST_DATA_MS = 120000, TR_ANSWER_MS = 300000;     // give up on a model that sends nothing for 2 minutes
@@ -161,11 +162,13 @@ async function trGenAny(parts, schema, o){
   const limits = o.limits = await trModels();
   const avail = TR_MODELS.filter(m => limits[m]);
   if (!avail.length) throw new Error('No suitable Gemini model is available for this key.');
-  let last, soonest = Infinity;
+  let last, soonest = Infinity, net = 0; const skip = new Set();      // models that looped or didn't reply for this request
   for (let round = 0; round < 6; round++){
     const open = avail.filter(trQuotaOk);
     if (!open.length){ const e = new Error('QUOTA'); e.quota = true; e.retryAt = Math.min(...avail.map(m => trQuota()[m] || Date.now() + 3600000)); throw e; }
-    const order = [...new Set([o.prefer || o.rec?.models?.at(-1), ...open].filter(m => m && open.includes(m)))];
+    const usable = open.filter(m => !skip.has(m));
+    if (!usable.length) throw last;                                     // every free model looped or didn't reply: report it for this part
+    const order = [...new Set([o.prefer || o.rec?.models?.at(-1), ...usable].filter(m => m && usable.includes(m)))];
     for (const model of order){
       for (let t = 0; t < 2; t++){
         if (o.signal?.aborted) throw new Error('STOPPED');
@@ -173,18 +176,29 @@ async function trGenAny(parts, schema, o){
         catch (e){
           last = e; const m = e.message || '';
           if (/^STOPPED/.test(m)) throw e;
-          if (/^TIMEOUT/.test(m)){ o.rec && trLog(o.rec, `${o.label || 'step'}: ${m}`); break; }
+          if (/^TIMEOUT/.test(m)){ o.rec && trLog(o.rec, `${o.label || 'step'}: ${m}`); skip.add(model); break; }
+          if (e.loop || e instanceof SyntaxError || /^No usable answer/.test(m)){ o.rec && trLog(o.rec, `${o.label || 'step'}: ${model} gave a broken answer twice; trying another model`); skip.add(model); break; }
           if (/^429/.test(m)){ const until = Date.now() + trRetryIn(m); trQuotaSet(model, until); soonest = Math.min(soonest, until); o.rec && trLog(o.rec, `${model}: free limit reached for now`); break; }
           if (!/^(503|500|502|504)/.test(m) && !(e instanceof TypeError)) throw e;
-          if (e instanceof TypeError){ const err = new Error('OFFLINE'); err.offline = true; throw err; }   // connection lost (phone paused the page or no network)
+          if (e instanceof TypeError){                                      // the phone dropped the connection: try again straight away, even with the screen off
+            if (net < TR_NET_RETRY_MS.length){ const wait = TR_NET_RETRY_MS[net++]; o.rec && trLog(o.rec, `${o.label || 'step'}: connection dropped; trying again in ${Math.round(wait / 1000)} s`);
+              await trWaitNet(wait, o.signal); t--; continue; }
+            const err = new Error('OFFLINE'); err.offline = true; throw err; }
           o.rec && trLog(o.rec, `${o.label || 'step'}: ${model} busy (${m.slice(0, 60)})`);
           if (t === 0) await trWaitBusy(6000, o.signal);
         }
       }
     }
+    { const left = avail.filter(trQuotaOk); if (left.length && left.every(m => skip.has(m))) throw last; }   // nothing left to try for this part (all used up: the next round says so)
     await trWaitBusy(Math.min(30000 + round * 15000, 90000), o.signal);       // every model was busy: wait a bit longer, then go round again
   }
   const e = new Error(`BUSY ${last?.message || ''}`); e.busy = true; throw e;
+}
+async function trWaitNet(ms, signal){
+  const end = Date.now() + ms;
+  while (Date.now() < end || !navigator.onLine){ if (signal?.aborted) throw new Error('STOPPED'); if (Date.now() > end + 120000) break;
+    trLive.detail = navigator.onLine ? `The connection dropped. Trying again in ${Math.max(0, Math.ceil((end - Date.now()) / 1000))} s.` : 'The phone is offline. It continues as soon as the connection is back.'; trTick(); await trSleep(1000); }
+  trLive.detail = ''; trTick();
 }
 async function trWaitBusy(ms, signal){
   const end = Date.now() + ms;
@@ -200,8 +214,8 @@ var TR_ITEM = { type: 'object', properties: { text: { type: 'string' }, status: 
 var TR_LIST = { type: 'array', maxItems: 8, items: TR_ITEM };
 var TR_SUM_SCHEMA = { type: 'object', properties: { overview: { type: 'string' }, key_points: TR_LIST, symptoms_findings: TR_LIST, treatment_medication: TR_LIST, decisions_next_steps: TR_LIST, important_details: TR_LIST }, required: ['overview'] };
 var TR_CTX_SCHEMA = { type: 'object', properties: { context: { type: 'array', maxItems: 10, items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, kind: { type: 'string' }, meaning: { type: 'string' }, explanation: { type: 'string' }, alternatives: { type: 'string' }, times: { type: 'array', items: { type: 'string' } } }, required: ['ar', 'lat', 'kind', 'meaning', 'explanation'] } } }, required: ['context'] };
-var TR_LEARN_SCHEMA = { type: 'object', properties: { learn: { type: 'array', maxItems: 10, items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' }, usage: { type: 'string' }, medical_context: { type: 'string' },
-  register: { type: 'string', enum: ['everyday', 'formal medical'] }, alternatives: { type: 'array', maxItems: 3, items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' } }, required: ['ar', 'lat', 'en'] } } }, required: ['ar', 'lat', 'en', 'usage', 'medical_context', 'register'] } } }, required: ['learn'] };
+var TR_LEARN_SCHEMA = { type: 'object', properties: { learn: { type: 'array', maxItems: 8, items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' }, usage: { type: 'string' }, medical_context: { type: 'string' },
+  register: { type: 'string', enum: ['everyday', 'formal medical'] }, alternatives: { type: 'array', maxItems: 2, items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' } }, required: ['ar', 'lat', 'en'] } } }, required: ['ar', 'lat', 'en', 'usage', 'medical_context', 'register'] } } }, required: ['learn'] };
 
 var trSegPrompt = (from, to, speakers) => `You are transcribing a pre-recorded conversation in Egyptian colloquial Arabic (Cairo dialect), most likely in a hospital or clinic. Speakers may include doctors, nurses, patients, parents and hospital staff.
 Transcribe ONLY the part of the audio from ${from} to ${to} (timestamps from the start of the recording).
@@ -219,6 +233,7 @@ var trSumPrompt = tr => `Below is a transcript of a conversation in Egyptian Ara
 Write a structured English summary as JSON: overview (2-3 sentences: what the conversation was about); key_points; symptoms_findings; treatment_medication (exact doses only if said); decisions_next_steps; important_details (things that must not be overlooked).
 Each item: text, status ("stated" = clearly said; "suggested" = proposed or recommended but not agreed; "uncertain" = unclear, hedged or contradictory), times (start times of the lines it comes from).
 Say who said or suggested each thing (by name if a name is used in the conversation, otherwise by speaker label), and check it against the lines.
+Put every request someone makes, every plan and every agreed action under decisions_next_steps (for example: "Speaker 1 asked for two tickets for Friday").
 If nothing was said about a topic, return an EMPTY list for it. Never write items like "nothing was mentioned".
 Transcript (time | speaker | Arabic | English):
 ${tr}`;
@@ -228,8 +243,8 @@ Each item, as JSON: ar (the exact words as they appear in the transcript), lat (
 Transcript (time | speaker | Arabic | English):
 ${tr}`;
 var trLearnPrompt = tr => `Below is a transcript of a conversation in Egyptian Arabic, with an English translation of each line. ${TR_ONLY}
-Pick 6 to 10 useful expressions that appear in this transcript, for a doctor learning Egyptian Arabic. Copy each expression exactly as it appears in the transcript.
-Each item, as JSON: ar, lat (accurate Egyptian transliteration, e.g. "ezzayyak", "delwa'ti"), en, usage (1-2 sentences: when and how it is used), medical_context (1 sentence: how it could be used in a hospital or clinic), register ("everyday" or "formal medical"), alternatives (up to 3 other ways Egyptians say it, each with ar, lat, en).
+Pick 5 to 8 useful expressions that appear in this transcript, for a doctor learning Egyptian Arabic. Copy each expression exactly as it appears in the transcript. Keep every field short: one sentence at most. Do not repeat yourself.
+Each item, as JSON: ar, lat (accurate Egyptian transliteration, e.g. "ezzayyak", "delwa'ti"), en, usage (1-2 sentences: when and how it is used), medical_context (1 sentence: how it could be used in a hospital or clinic), register ("everyday" or "formal medical"), alternatives (up to 2 other ways Egyptians say it, each with ar, lat, en).
 Transcript (time | speaker | Arabic | English):
 ${tr}`;
 var trNormAr = t => String(t || '').replace(/[ً-ٰٟـ]/g, '').replace(/[إأآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[^ء-ي\s]/g, ' ').replace(/\s+/g, ' ').trim();
@@ -245,7 +260,7 @@ function trClean(kind, val, rec){
 }
 
 /* ---------- Keep running with the screen off, and say when it's ready ---------- */
-var trAudioEl = null, trAwake = false;
+var trAudioEl = null, trAwake = false, trAudioOn = false;
 function trSilentWav(){   // 2 seconds of near-silence (tiny noise, inaudible), so the phone treats the page as playing audio
   const sr = 8000, n = sr * 2, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
   w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
@@ -256,7 +271,7 @@ function trSilentWav(){   // 2 seconds of near-silence (tiny noise, inaudible), 
 function trKeepAwake(on){      // call from a tap when turning on: phones only start audio after a tap
   try {
     if (on){
-      if (!trAudioEl){ trAudioEl = new Audio(trSilentWav()); trAudioEl.loop = true; trAudioEl.setAttribute('playsinline', ''); trAudioEl.addEventListener('pause', () => trAwake && trEvent('screen-off audio was paused by the phone')); trAudioEl.addEventListener('playing', () => trEvent('screen-off audio playing')); }
+      if (!trAudioEl){ trAudioEl = new Audio(trSilentWav()); trAudioEl.loop = true; trAudioEl.setAttribute('playsinline', ''); trAudioEl.addEventListener('pause', () => { if (trAwake) trEvent('screen-off audio was paused by the phone'); trAudioOn = false; }); trAudioEl.addEventListener('playing', () => { if (!trAudioOn) trEvent('screen-off audio playing'); trAudioOn = true; }); }
       const p = trAudioEl.play(); trAwake = true;
       if (p && p.catch) p.catch(() => { trAwake = false; trTick(); });
       trMedia();
@@ -298,19 +313,24 @@ async function trRun(){
       const ok = await trProcess(recs[0]);
       if (!ok){ trWasOffline = true; break; }           // paused by the phone or the network: carry on when the app is back
     }
-  } finally { trRunning = false; trCtl = null; trLive.id = null; trKeepAwake(false); trRefreshLoader(); trRefreshHome();
-    if (trWasOffline && document.visibilityState === 'visible' && navigator.onLine) setTimeout(trResume, 4000); }
+  } finally { trRunning = false; trCtl = null; trLive.id = null; if (!trWasOffline) trKeepAwake(false); trRefreshLoader(); trRefreshHome();
+    if (trWasOffline) setTimeout(trResume, navigator.onLine ? 30000 : 5000); }
 }
 async function trProcess(rec){
   trCtl = new AbortController(); const signal = trCtl.signal; trCurRec = rec;
   trLog(rec, `job ${rec.parts?.length || rec.segments ? 'resumed' : 'started'} (screen-off mode ${trAwake ? 'on' : 'off'}, notifications ${window.Notification ? Notification.permission : 'not available'})`);
-  rec.status = 'working'; rec.error = ''; rec.retryAt = 0; rec.startedAt = rec.startedAt || Date.now(); trLive.started = Date.now(); await trPut(rec);
+  rec.status = 'working'; rec.error = ''; rec.retryAt = 0; delete rec.waitNet; rec.startedAt = rec.startedAt || Date.now(); trLive.started = Date.now(); await trPut(rec);
   const o = { signal, rec, prefer: rec.models?.at(-1) };
   try {
     if (!rec.file || Date.now() - rec.file.at > 44 * 3600000){          // Gemini keeps uploads for 48 hours
       trSetStep(rec, 'upload', 'Uploading the recording');
       const blob = await trGetAudio(rec.id); if (!blob) throw new Error('The audio file is missing from this phone.');
-      try { rec.file = await trUpload(blob, rec.mime, signal); } catch (e){ if (e.name === 'AbortError') throw new Error('STOPPED'); if (e instanceof TypeError){ const x = new Error('OFFLINE'); x.offline = true; throw x; } throw e; }
+      for (let k = 0; ; k++){
+        try { rec.file = await trUpload(blob, rec.mime, signal); break; }
+        catch (e){ if (e.name === 'AbortError') throw new Error('STOPPED');
+          if (e instanceof TypeError){ if (k < TR_NET_RETRY_MS.length){ trLog(rec, `upload: connection dropped; trying again in ${Math.round(TR_NET_RETRY_MS[k] / 1000)} s`); await trWaitNet(TR_NET_RETRY_MS[k], signal); continue; }
+            const x = new Error('OFFLINE'); x.offline = true; throw x; }
+          throw e; } }
       trLog(rec, 'uploaded'); await trPut(rec);
     }
     const total = Math.max(1, Math.ceil((rec.duration || TR_STEP_SEC) / TR_STEP_SEC));
@@ -330,23 +350,29 @@ async function trProcess(rec){
       if (!segs.length){ rec.summary = { overview: '' }; rec.context = []; rec.learn = []; }
     }
     const tr = rec.segments.length ? trTranscriptText(rec) : '';
-    const section = async (key, step, text, prompt, schema, max, pick) => {
+    // The summary, explanations and phrases only need the transcript, so they are asked for at the same time.
+    const section = async (key, prompt, schema, max, pick) => {
       if (rec[key] !== undefined && !rec[key]?.error) return;
-      trSetStep(rec, step, text);
       try { const j = await trGenAny([{ text: prompt(tr) }], schema, { ...o, label: key, maxOut: max }); rec[key] = trClean(key, pick(j), rec); }
       catch (e){ if (e.quota || e.offline || e.busy || /^STOPPED/.test(e.message)) throw e; rec[key] = { error: trPlain(e) }; trLog(rec, `${key}: ${e.message}`); }
       await trPut(rec);
     };
-    await section('summary', 'summary', 'Summarising the conversation', trSumPrompt, TR_SUM_SCHEMA, 4096, j => j);
-    await section('context', 'context', 'Explaining expressions and terms', trCtxPrompt, TR_CTX_SCHEMA, 4096, j => j.context || []);
-    await section('learn', 'learn', 'Choosing phrases to learn', trLearnPrompt, TR_LEARN_SCHEMA, 3072, j => j.learn || []);
+    if (['summary', 'context', 'learn'].some(k => rec[k] === undefined || rec[k]?.error)){
+      trSetStep(rec, 'analysis', 'Writing the summary, explanations and phrases');
+      const res = await Promise.allSettled([
+        section('summary', trSumPrompt, TR_SUM_SCHEMA, 4096, j => j),
+        section('context', trCtxPrompt, TR_CTX_SCHEMA, 4096, j => j.context || []),
+        section('learn', trLearnPrompt, TR_LEARN_SCHEMA, 3072, j => j.learn || [])]);
+      const bad = res.filter(r => r.status === 'rejected').map(r => r.reason);
+      if (bad.length) throw bad.find(e => /^STOPPED/.test(e.message)) || bad.find(e => e.quota) || bad.find(e => e.offline) || bad[0];
+    }
     rec.status = 'done'; rec.doneAt = Date.now(); trLog(rec, 'done'); await trPut(rec);
     if (rec.file){ trApi('/v1beta/' + rec.file.name, { method: 'DELETE' }).catch(() => {}); }
     trNotify(rec);
     return true;
   } catch (e){
     if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.error = 'Stopped by you'; await trPut(rec); return true; }
-    if (e.offline){ trLog(rec, 'connection lost; continues when the app is back'); await trPut(rec); return false; }
+    if (e.offline){ trLog(rec, 'connection still lost after several tries; trying again in 30 s, or when the page is opened'); rec.waitNet = Date.now(); await trPut(rec); return false; }
     if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Today's free Gemini limit is used up. It continues by itself after ${trWhen(e.retryAt)} while the Translator is open.`; }
     else if (e.busy){ rec.status = 'waiting'; rec.retryAt = Date.now() + 10 * 60000; rec.error = 'The free Gemini service stayed busy. It tries again in about 10 minutes while the Translator is open.'; }
     else { rec.status = 'failed'; rec.error = trPlain(e); }
@@ -470,9 +496,13 @@ async function trRefreshLoader(){
   const el = document.getElementById('trLoader'); if (!el) return;
   const id = el.dataset.id, rec = await trGet(id).catch(() => null); if (!rec || !document.getElementById('trLoader')) return;
   if (rec.status === 'done'){ if (trViewing === id) trResult(rec); return; }
-  const live = trLive.id === id && trRunning, step = live ? trLive.step : (rec.segments ? (rec.summary === undefined ? 'summary' : rec.context === undefined ? 'context' : 'learn') : rec.file ? 'transcribe' : 'upload');
-  const idx = TR_STEPS.findIndex(s => s[0] === step), state = rec.status;
-  document.getElementById('trSteps').innerHTML = TR_STEPS.map(([k, t], i) => `<li class="${i < idx ? 'done' : i === idx ? (live ? 'now' : 'next') : ''}"><span class="tr-dot">${i < idx ? trI('check') : ''}</span><span>${i === idx && live ? trEsc(trLive.stepText) : t}</span></li>`).join('');
+  const live = trLive.id === id && trRunning, state = rec.status;
+  const doneOf = k => k === 'upload' ? !!rec.file : k === 'transcribe' ? !!rec.segments : rec[k] !== undefined && !rec[k]?.error;
+  const reached = k => k === 'upload' ? true : k === 'transcribe' ? !!rec.file : !!rec.segments;
+  const firstOpen = TR_STEPS.findIndex(([k]) => !doneOf(k));
+  document.getElementById('trSteps').innerHTML = TR_STEPS.map(([k, t], i) => { const d = doneOf(k), cur = !d && reached(k) && (i === firstOpen || i >= 2 && firstOpen >= 2);
+    const label = cur && live && k === 'transcribe' ? trLive.stepText : t;
+    return `<li class="${d ? 'done' : cur ? (live ? 'now' : 'next') : ''}"><span class="tr-dot">${d ? trI('check') : ''}</span><span>${trEsc(label)}</span></li>`; }).join('');
   const msg = document.getElementById('trMsg'), spin = document.getElementById('trSpin'), btns = document.getElementById('trBtns'), title = document.getElementById('trLoadT');
   let html = '', b = '';
   if (live){
@@ -485,7 +515,7 @@ async function trRefreshLoader(){
   } else {
     spin.classList.add('off'); document.getElementById('trElapsed').textContent = '';
     title.textContent = state === 'failed' ? 'Translation stopped' : state === 'paused' ? 'Translation stopped' : state === 'waiting' ? 'Translation is waiting' : 'Translation will continue';
-    html = trEsc(rec.error || (state === 'working' ? 'It continues automatically while the Translator is open.' : ''));
+    html = trEsc(rec.error || (state === 'working' ? (rec.waitNet ? 'The phone stopped the connection. It tries again by itself every 30 seconds, and straight away when you open this page.' : 'It continues by itself while the Translator is open.') : ''));
     b += `<button class="btn primary block" id="trGo">${trI('play')}${state === 'working' ? 'Continue now' : 'Try again now'}</button>`;
     b += `<button class="btn danger block" id="trDel">${trI('trash', 'sm')}Delete this recording</button>`;
   }
