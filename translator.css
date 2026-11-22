@@ -71,7 +71,8 @@
 .tr-ar{font-family:var(--font-ar);font-size:21px;font-weight:700;line-height:1.7;direction:rtl;text-align:right;overflow-wrap:anywhere}
 .tr-en{font-size:15px;line-height:1.5;color:var(--ink-2)}
 .tr-segs.ar .tr-en,.tr-segs.en .tr-ar{display:none}
-@media (min-width:700px){ .tr-segs.both .tr-seg{grid-template-columns:1fr 1fr;column-gap:20px;align-items:start} .tr-segs.both .tr-seg-top{grid-column:1/-1} .tr-segs.both .tr-en{order:-1} }
+/* Tablet and wider: time and speaker on top, then the English on the left and the Arabic on the right */
+@media (min-width:700px){ .tr-segs.both .tr-seg{grid-template-columns:1fr 1fr;column-gap:24px;align-items:start} .tr-segs.both .tr-seg-top{grid-column:1/-1;grid-row:1} .tr-segs.both .tr-en{grid-column:1;grid-row:2} .tr-segs.both .tr-ar{grid-column:2;grid-row:2} }
 .tr-card{display:flex;flex-direction:column;gap:6px}
 .tr-ai{display:flex;align-items:center;gap:6px;margin:0 0 6px;font-size:12.5px;font-weight:700;color:var(--muted)}
 .tr-over{margin:0;font-size:16px;line-height:1.55}

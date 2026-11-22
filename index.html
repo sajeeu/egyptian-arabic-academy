@@ -14,8 +14,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="m9.css?v=20261123a">
-<link rel="stylesheet" href="translator.css?v=20261123a">
+<link rel="stylesheet" href="m9.css?v=20261123b">
+<link rel="stylesheet" href="translator.css?v=20261123b">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
@@ -546,6 +546,9 @@ dialog.modal[open]{animation:eaa-modal .24s cubic-bezier(.2,.7,.2,1)}
 dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:50;width:max-content;max-width:min(calc(100vw - 32px),520px);background:var(--green);color:var(--on-green);padding:12px 16px;border-radius:14px;font-size:14px;font-weight:600;display:flex;gap:10px;align-items:flex-start;box-shadow:0 10px 30px -6px rgba(14,74,48,.45)}
 
+/* Tablet: four tabs in the top bar; a little less space between them keeps the subtitle on one line */
+@media (min-width:621px) and (max-width:900px){ nav{gap:2px} nav button{padding:0 10px} }
+@media (min-width:760px) and (max-width:900px){ .brand small{white-space:nowrap} }   /* below 760px it may wrap rather than push the bar off screen */
 /* Phone: navigation moves to a bottom tab bar */
 @media (max-width:620px){
   .top{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}  /* a blur here would trap the fixed tab bar inside the header */
@@ -587,14 +590,14 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <!-- ?v= is the release stamp: change it (here and on m9.css) whenever any of these files change, so phones fetch the new copy instead of a saved one. -->
-<script src="curriculum.js?v=20261123a"></script>
+<script src="curriculum.js?v=20261123b"></script>
 <!-- Module 09 (Pediatrics): lesson data, then its pages. The app still runs as Modules 01-08 if these fail to load. -->
-<script src="module9.js?v=20261123a"></script>
-<script src="m9.js?v=20261123a"></script>
+<script src="module9.js?v=20261123b"></script>
+<script src="m9.js?v=20261123b"></script>
 <!-- Conversation Translator (its own tab). The app runs as before if it fails to load. Its recordings are kept in their own
      storage (never the lesson progress) and are included in Settings > Daily backup and the backup file. -->
 <script>var TR_IN_APP = true;</script>
-<script src="translator.js?v=20261123a"></script>
+<script src="translator.js?v=20261123b"></script>
 <script>
 /* ---------- State ---------- */
 const KEY = 'egyptian_academy_v92';
