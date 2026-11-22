@@ -92,3 +92,10 @@
 .tr-report-box{width:100%;min-height:160px;margin-top:8px;font:12px/1.4 ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--sunk);color:var(--ink)}
 .tr-redo{flex-direction:row;align-items:center;gap:14px} .tr-redo p{margin:0}
 .tr-spin.sm{width:28px;height:28px;border-width:3px;margin:0;flex:none}
+/* Lines that can be played: a speaker on each, a hint above, and the speaker pulses while that line plays */
+.tr-hint{display:flex;align-items:center;gap:8px;margin:0 2px 2px;font-size:13.5px;font-weight:700;color:var(--muted)}
+.tr-hint .ic{color:var(--green)}
+.tr-play{margin-left:auto;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:var(--pale);color:var(--pale-ink);flex:none;transition:background-color .15s,color .15s}
+.tr-play .ic{width:18px;height:18px}
+.tr-segs.can-play .tr-seg:hover .tr-play{background:var(--green);color:var(--on-green)}
+.tr-seg.on .tr-play{background:var(--green);color:var(--on-green);animation:tr-pulse 1.1s ease-in-out infinite}

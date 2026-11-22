@@ -21,7 +21,7 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
-var TR_VERSION = 'translator-test v5';
+var TR_VERSION = 'translator-test v6';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -34,7 +34,7 @@ var TR_ICONS = {
   clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
   trash: '<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
   check: '<path d="M20 6 9 17l-5-5"/>', left: '<path d="m15 18-6-6 6-6"/>', alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
-  play: '<polygon points="6 3 20 12 6 21 6 3"/>', bell: '<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>', vol: '<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/>', bell: '<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
 };
 var trI = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${TR_ICONS[n] || ''}</svg>`;
 var trEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -613,8 +613,9 @@ function trPane(rec){
   const p = document.getElementById('trPane'); if (!p) return;
   const ai = `<p class="tr-ai">${trI('alert', 'sm')}Written by AI from the transcript. Tap a time to hear that part.</p>`;
   if (trTab === 'conv'){
-    p.innerHTML = `<div class="tr-segs both">${rec.segments.length ? rec.segments.map((s, i) => `<button class="tr-seg" data-i="${i}">
-        <span class="tr-seg-top"><b>${trEsc(s.start)}</b><span class="tr-spk">${trEsc(s.speaker)}${s.role && s.role !== 'unknown' ? ' · ' + trEsc(s.role) : ''}</span>${s.unclear ? '<span class="tag sand">unclear part</span>' : ''}${s.check ? '<span class="tag sand">check the audio</span>' : ''}</span>
+    const canPlay = !!document.getElementById('trAudio');           // a speaker on each line shows it can be tapped to hear it
+    p.innerHTML = `${canPlay && rec.segments.length ? `<p class="tr-hint">${trI('vol', 'sm')}Tap any line to hear it in the recording.</p>` : ''}<div class="tr-segs both${canPlay ? ' can-play' : ''}">${rec.segments.length ? rec.segments.map((s, i) => `<button class="tr-seg" data-i="${i}"${canPlay ? ` aria-label="Play ${trEsc(s.start)}, ${trEsc(s.speaker)}"` : ''}>
+        <span class="tr-seg-top"><b>${trEsc(s.start)}</b><span class="tr-spk">${trEsc(s.speaker)}${s.role && s.role !== 'unknown' ? ' · ' + trEsc(s.role) : ''}</span>${s.unclear ? '<span class="tag sand">unclear part</span>' : ''}${s.check ? '<span class="tag sand">check the audio</span>' : ''}${canPlay ? `<span class="tr-play" aria-hidden="true">${trI('vol')}</span>` : ''}</span>
         <span class="tr-ar" lang="ar" dir="rtl">${trEsc(s.ar)}</span><span class="tr-en">${trEsc(s.en)}</span></button>`).join('') : '<p class="muted">No speech was found in this recording.</p>'}</div>`;
     p.querySelectorAll('.tr-seg').forEach(b => b.onclick = () => { const s = rec.segments[+b.dataset.i]; trPlay(trSecs(s.start), trSecs(s.end), b); });
   } else if (trTab === 'sum'){
