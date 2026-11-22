@@ -56,6 +56,9 @@ ul{margin:0;padding-left:20px} li{margin:3px 0}
     <button class="btn primary" id="run" disabled>Transcribe, translate and analyse</button>
     <p class="sm muted">Long recordings are done in 10-minute parts, like the real Translator will. Keep this page open with the screen on until it finishes.</p>
     <div id="status"></div><div id="log" hidden></div>
+    <button class="btn" id="compare" disabled>Speed test: compare models (transcript only)</button>
+    <p class="sm muted">Runs the transcript step once on each suggested model, up to 2½ minutes each, and records speed and the first lines. It can take a while.</p>
+    <div id="cmp"></div>
     <button class="btn" id="copy" hidden>Copy report</button>
     <p class="sm muted" id="copyNote" hidden>The report has the transcript, timings and any errors, never the key. Paste it in the chat with Claude.</p></section>
 
@@ -71,7 +74,7 @@ const API = 'https://generativelanguage.googleapis.com';
 const key = (() => { try { return localStorage.getItem('gemini_key') || ''; } catch { return ''; } })();
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const report = { page: 'translator-lab v3', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
+const report = { page: 'translator-lab v4', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
 let file = null, duration = 0, segs = [], view = 'sbs';
 const OUT = {};                                                       // each model's longest allowed answer
 
@@ -123,7 +126,7 @@ $('file').onchange = () => {
   if (!mime) status(`<span class="pill bad">Unsupported format</span> <span class="sm">Use MP3, M4A, WAV, AAC or OGG.</span>`);
   ready();
 };
-function ready(){ $('run').disabled = !(key && file && MIME[(file.name.split('.').pop() || '').toLowerCase()] && !$('model').disabled); }
+function ready(){ $('compare').disabled = $('run').disabled = !(key && file && MIME[(file.name.split('.').pop() || '').toLowerCase()] && !$('model').disabled); }
 
 /* 3. Run */
 async function upload(f, mime){
@@ -143,25 +146,32 @@ async function upload(f, mime){
 const b64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
 
 // Ask for JSON. Tries the documented schema field first, then plain JSON mode, then a prompt-only request; reports which worked.
-async function gen(model, parts, schema, label){
+// Answers that repeat the same run of words over and over are broken (the model looped).
+function degenerate(text){ const w = text.split(/\s+/).filter(Boolean), seen = new Map();
+  for (let i = 0; i + 6 <= w.length; i++){ const k = w.slice(i, i + 6).join(' '); const c = (seen.get(k) || 0) + 1; if (c > 4) return true; seen.set(k, c); } return false; }
+const NO_THINK = new Set();
+async function gen(model, parts, schema, label, o = {}){
   const tries = [
+    ['responseSchema, low thinking', { responseMimeType: 'application/json', responseSchema: schema, thinkingConfig: { thinkingLevel: 'low' } }],
     ['responseSchema', { responseMimeType: 'application/json', responseSchema: schema }],
     ['responseJsonSchema', { responseMimeType: 'application/json', responseJsonSchema: schema }],
     ['json mode', { responseMimeType: 'application/json' }],
     ['plain', {}]];
-  let last, start = 0;
+  let last, start = NO_THINK.has(model) ? 1 : 0;           // skip the thinking setting for a model that refused it before
   for (let t = start; t < tries.length; t++){
     const [how, cfg] = tries[t];
     for (let attempt = 1; attempt <= 2; attempt++){
       try {
-        const res = await streamGen(model, { contents: [{ role: 'user', parts }], generationConfig: { temperature: 0, maxOutputTokens: Math.min(OUT[model] || 8192, 65536), ...cfg } }, label);
+        const res = await streamGen(model, { contents: [{ role: 'user', parts }], generationConfig: { maxOutputTokens: Math.min(OUT[model] || 8192, o.maxOut || 65536), ...cfg } }, label, o.timeoutMs);
         report.usage.push({ step: label, how, attempt, seconds: res.seconds, firstByteSeconds: res.firstByte, finish: res.finish, usage: res.usage });
+        if (degenerate(res.text)){ const e = new Error(`LOOP The answer kept repeating itself (${res.text.length} characters, finish: ${res.finish})`); e.loop = true; throw e; }
         const m = res.text.match(/\{[\s\S]*\}/); if (!m) throw new Error(`No JSON in answer (finish: ${res.finish}) ${res.text.slice(0, 200)}`);
         log(`${label}: done with ${how} in ${res.seconds} s, first data after ${res.firstByte} s (finish: ${res.finish})`);
         return JSON.parse(m[0]);
       } catch (e){
         last = e;
-        if (/^(400)/.test(e.message) && /schema|Unknown name|Invalid JSON payload|response/i.test(e.message)) { log(`${label}: ${how} not accepted, trying next way`); break; }
+        if (/^(400)/.test(e.message) && /schema|Unknown name|Invalid JSON payload|response|thinking/i.test(e.message)) { if (t === 0) NO_THINK.add(model); log(`${label}: ${how} not accepted, trying next way`); break; }
+        if (e.loop && attempt === 1){ fail(label + ' (broken answer, asking again)', e); continue; }
         if (e instanceof TypeError && attempt === 1){                    // the connection dropped (phone asleep, app switched, network): wait, then try once more
           fail(label + ' (connection dropped, retrying once)', e); await backOnline(); continue; }
         throw e;
@@ -177,13 +187,13 @@ const FALLBACK = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'g
 let activeModel = null;
 const wait = (ms, label) => new Promise(res => { const end = Date.now() + ms;
   const t = setInterval(() => { const left = Math.ceil((end - Date.now()) / 1000); if (left <= 0){ clearInterval(t); res(); } else status(`<span class="pill warn">${esc(label)} · trying again in ${left} s</span>`); }, 250); });
-async function genAny(parts, schema, label){
+async function genAny(parts, schema, label, o = {}){
   const avail = report.modelsAvailable || [];
   const chain = [...new Set([activeModel || $('model').value, ...FALLBACK.filter(m => avail.includes(m))])];
   let last;
   for (const model of chain){
     for (let t = 0; t < 3; t++){
-      try { const j = await gen(model, parts, schema, `${label} [${model}]`); if (activeModel !== model) log(`Using ${model} from now on.`); activeModel = model; report.answeredBy = [...new Set([...(report.answeredBy || []), model])]; return j; }
+      try { const j = await gen(model, parts, schema, `${label} [${model}]`, o); if (activeModel !== model) log(`Using ${model} from now on.`); activeModel = model; report.answeredBy = [...new Set([...(report.answeredBy || []), model])]; return j; }
       catch (e){
         last = e; const m = e.message || '';
         if (!/^(503|500|504|429)/.test(m)) throw e;                     // a real error: stop and report it
@@ -197,11 +207,12 @@ async function genAny(parts, schema, label){
   throw last;
 }
 // Streams the answer so data keeps flowing on slow answers, with a running timer on screen.
-async function streamGen(model, body, label){
+async function streamGen(model, body, label, timeoutMs){
+  const ac = new AbortController(), cap = timeoutMs ? setTimeout(() => ac.abort(), timeoutMs) : 0;
   const t0 = performance.now(); let firstByte = null, text = '', finish = null, usage = null, chars = 0;
   const tick = setInterval(() => status(`<span class="pill warn">${esc(label)}: ${firstByte === null ? 'waiting for Gemini' : 'receiving'} · ${Math.round((performance.now() - t0) / 1000)} s${chars ? ` · ${chars} characters` : ''}</span> <span class="sm muted">Keep this page open with the screen on.</span>`), 1000);
   try {
-    const r = await fetch(`${API}/v1beta/models/${model}:streamGenerateContent?alt=sse`, { method: 'POST', headers: hdr({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
+    const r = await fetch(`${API}/v1beta/models/${model}:streamGenerateContent?alt=sse`, { method: 'POST', headers: hdr({ 'Content-Type': 'application/json' }), body: JSON.stringify(body), signal: ac.signal });
     if (!r.ok){ const tx = await r.text(); let j = null; try { j = JSON.parse(tx); } catch {} throw new Error(`${r.status} ${(j && (j.error || j[0]?.error)?.message) || tx.slice(0, 300)}`); }
     const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
     for (;;){
@@ -218,7 +229,8 @@ async function streamGen(model, body, label){
       }
     }
     return { text, finish, usage, firstByte, seconds: +((performance.now() - t0) / 1000).toFixed(1) };
-  } finally { clearInterval(tick); }
+  } catch (e){ if (e.name === 'AbortError') throw new Error(`TIMEOUT no full answer within ${Math.round(timeoutMs / 1000)} s`); throw e; }
+  finally { clearInterval(tick); clearTimeout(cap); }
 }
 const backOnline = () => new Promise(res => { const ok = () => navigator.onLine && document.visibilityState === 'visible';
   if (ok()) return setTimeout(res, 1500); log('Waiting for the page to be visible and online again…');
@@ -234,15 +246,13 @@ addEventListener('online', () => running && log('Phone back online'));
 
 const SEG_SCHEMA = { type: 'object', properties: { segments: { type: 'array', items: { type: 'object', properties: {
   start: { type: 'string' }, end: { type: 'string' }, speaker: { type: 'string' }, role: { type: 'string' }, ar: { type: 'string' }, en: { type: 'string' },
-  unclear: { type: 'boolean' }, check: { type: 'boolean' } }, required: ['start', 'speaker', 'ar', 'en'] } } }, required: ['segments'] };
+  unclear: { type: 'boolean' }, check: { type: 'boolean' } }, required: ['start', 'end', 'speaker', 'ar', 'en'] } } }, required: ['segments'] };
 const ITEM = { type: 'object', properties: { text: { type: 'string' }, status: { type: 'string', enum: ['stated', 'suggested', 'uncertain'] }, times: { type: 'array', items: { type: 'string' } } }, required: ['text', 'status'] };
-const AN_SCHEMA = { type: 'object', properties: {
-  summary: { type: 'object', properties: { overview: { type: 'string' }, key_points: { type: 'array', items: ITEM }, symptoms_findings: { type: 'array', items: ITEM },
-    treatment_medication: { type: 'array', items: ITEM }, decisions_next_steps: { type: 'array', items: ITEM }, important_details: { type: 'array', items: ITEM } }, required: ['overview'] },
-  context: { type: 'array', items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, kind: { type: 'string' }, meaning: { type: 'string' }, explanation: { type: 'string' }, alternatives: { type: 'string' }, times: { type: 'array', items: { type: 'string' } } }, required: ['ar', 'meaning'] } },
-  learn: { type: 'array', items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' }, usage: { type: 'string' }, medical_context: { type: 'string' },
-    register: { type: 'string', enum: ['everyday', 'formal medical'] }, alternatives: { type: 'array', items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' } } } } }, required: ['ar', 'lat', 'en'] } } },
-  required: ['summary'] };
+const LIST = { type: 'array', maxItems: 8, items: ITEM };
+const SUM_SCHEMA = { type: 'object', properties: { overview: { type: 'string' }, key_points: LIST, symptoms_findings: LIST, treatment_medication: LIST, decisions_next_steps: LIST, important_details: LIST }, required: ['overview'] };
+const CTX_SCHEMA = { type: 'object', properties: { context: { type: 'array', maxItems: 10, items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, kind: { type: 'string' }, meaning: { type: 'string' }, explanation: { type: 'string' }, alternatives: { type: 'string' }, times: { type: 'array', items: { type: 'string' } } }, required: ['ar', 'meaning'] } } }, required: ['context'] };
+const LEARN_SCHEMA = { type: 'object', properties: { learn: { type: 'array', maxItems: 10, items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' }, usage: { type: 'string' }, medical_context: { type: 'string' },
+  register: { type: 'string', enum: ['everyday', 'formal medical'] }, alternatives: { type: 'array', maxItems: 3, items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' } } } } }, required: ['ar', 'lat', 'en'] } } }, required: ['learn'] };
 
 const segPrompt = (from, to, speakers) => `You are transcribing a pre-recorded conversation in Egyptian colloquial Arabic (Cairo dialect), most likely in a hospital or clinic. Speakers may include doctors, nurses, patients, parents and hospital staff.
 Transcribe ONLY the part of the audio from ${from} to ${to} (timestamps from the start of the recording).
@@ -256,17 +266,41 @@ Rules:
 - If nobody speaks in this part, return an empty segments list.
 Return JSON: {"segments":[{"start","end","speaker","role","ar","en","unclear","check"}]}.`;
 
-const anPrompt = transcript => `Below is a transcript of a conversation in Egyptian Arabic, most likely in a hospital or clinic, with an English translation of each line. Use ONLY what is in it. Never add facts, diagnoses, drugs or doses that are not said.
-Produce JSON with:
-1. summary: overview (2-3 sentences, what the conversation was about); key_points; symptoms_findings; treatment_medication (include exact doses only if said); decisions_next_steps; important_details (things that must not be overlooked). Each item has text, status ("stated" = clearly said; "suggested" = proposed or recommended but not agreed; "uncertain" = unclear, hedged or contradictory) and times (the segment start times it comes from). Leave a list empty if nothing was said about it.
-2. context: Egyptian expressions, slang, idioms, cultural points, medical terms in plain English, tone or urgency, possible misunderstandings and ambiguous lines. Each: ar (the words), lat (transliteration), kind (slang, idiom, cultural, medical term, tone, ambiguity), meaning, explanation, alternatives (other possible readings if the meaning is uncertain), times.
-3. learn: 6-12 useful expressions from this conversation for a doctor learning Egyptian Arabic. Each: ar, lat (accurate Egyptian transliteration, e.g. "ezzayyak", "delwa'ti"), en, usage (when and how it is used), medical_context, register ("everyday" or "formal medical"), alternatives (other ways people say it, each with ar, lat, en).
+const ONLY = `Use ONLY what is in the transcript below. Never add facts, diagnoses, drugs or doses that are not said. Keep every text short and plain (at most 2 sentences).`;
+const sumPrompt = tr => `Below is a transcript of a conversation in Egyptian Arabic, most likely in a hospital or clinic, with an English translation of each line. ${ONLY}
+Write a structured English summary as JSON: overview (2-3 sentences: what the conversation was about); key_points; symptoms_findings; treatment_medication (exact doses only if said); decisions_next_steps; important_details (things that must not be overlooked).
+Each item: text, status ("stated" = clearly said; "suggested" = proposed or recommended but not agreed; "uncertain" = unclear, hedged or contradictory), times (start times of the lines it comes from).
+If nothing was said about a topic, return an EMPTY list for it. Never write items like "nothing was mentioned".
 Transcript (time | speaker | Arabic | English):
-${transcript}`;
+${tr}`;
+const ctxPrompt = tr => `Below is a transcript of a conversation in Egyptian Arabic, most likely in a hospital or clinic, with an English translation of each line. ${ONLY}
+List up to 10 things a non-native listener might miss: Egyptian expressions, slang, idioms, cultural points, medical terms in plain English, tone or urgency, possible misunderstandings and ambiguous lines.
+Each item, as JSON: ar (the exact words as they appear in the transcript), lat (Egyptian transliteration), kind (slang, idiom, cultural, medical term, tone, ambiguity), meaning, explanation (1-2 sentences), alternatives (other possible readings, only if the meaning is uncertain), times.
+Transcript (time | speaker | Arabic | English):
+${tr}`;
+const learnPrompt = tr => `Below is a transcript of a conversation in Egyptian Arabic, with an English translation of each line. ${ONLY}
+Pick 6 to 10 useful expressions that appear in this transcript, for a doctor learning Egyptian Arabic. Copy each expression exactly as it appears in the transcript.
+Each item, as JSON: ar, lat (accurate Egyptian transliteration, e.g. "ezzayyak", "delwa'ti"), en, usage (1-2 sentences: when and how it is used), medical_context (1 sentence: how it could be used in a hospital or clinic), register ("everyday" or "formal medical"), alternatives (up to 3 other ways Egyptians say it, each with ar, lat, en).
+Transcript (time | speaker | Arabic | English):
+${tr}`;
+
+// Checks on the answers: a phrase must come from the transcript; overlong or "nothing mentioned" items are dropped.
+const normAr = t => String(t || '').replace(/[\u064B-\u065F\u0670\u0640]/g, '').replace(/[إأآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[^\u0621-\u064A\s]/g, ' ').replace(/\s+/g, ' ').trim();
+function grounded(ar, trNorm, trWords){ const a = normAr(ar); if (!a) return false; if (trNorm.includes(a)) return true;
+  const w = a.split(' '); return w.filter(x => trWords.has(x)).length / w.length >= 0.8; }
+const tooLong = o => Object.values(o).some(v => typeof v === 'string' && v.length > 500);
+const emptyItem = x => { const t = String(x?.text || '').trim(); return /^(no|none|nothing)\b/i.test(t) && /mention|discuss|said|given|none|nothing/i.test(t) || /\bnot (mentioned|discussed|said)\b/i.test(t); };
+function cleanAnalysis(sum, ctx, learn, tr){
+  const trNorm = normAr(tr), trWords = new Set(trNorm.split(' ')), dropped = [];
+  for (const k of ['key_points', 'symptoms_findings', 'treatment_medication', 'decisions_next_steps', 'important_details'])
+    if (Array.isArray(sum[k])) sum[k] = sum[k].filter(x => { const bad = emptyItem(x) || tooLong(x); if (bad) dropped.push({ where: 'summary.' + k, text: String(x.text).slice(0, 120) }); return !bad; });
+  const keep = where => x => { const why = !grounded(x.ar, trNorm, trWords) ? 'not in transcript' : tooLong(x) ? 'too long' : ''; if (why) dropped.push({ where, why, ar: String(x.ar).slice(0, 80) }); return !why; };
+  return { summary: sum, context: (ctx || []).filter(keep('context')), learn: (learn || []).filter(keep('learn')), dropped };
+}
 
 $('run').onclick = async () => {
   const mime = MIME[(file.name.split('.').pop() || '').toLowerCase()], model = $('model').value;
-  $('run').disabled = true; running = true; keepAwake(true); $('log').textContent = ''; activeModel = null; Object.assign(report, { answeredBy: [], started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
+  $('run').disabled = $('compare').disabled = true; running = true; keepAwake(true); $('log').textContent = ''; activeModel = null; Object.assign(report, { answeredBy: [], started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
   segs = []; ['out', 'sum', 'ctx', 'learn'].forEach(id => $(id).hidden = true);
   let fo = null, part;
   try {
@@ -283,16 +317,48 @@ $('run').onclick = async () => {
       const j = await genAny([part, { text: segPrompt(from, to, speakers) }], SEG_SCHEMA, `part ${i + 1}`);
       const got = (j.segments || []).filter(s => s && (s.ar || s.en)); segs = segs.concat(got); log(`part ${i + 1}: ${got.length} segments`); render();
     }
-    report.segments = segs;
-    status('<span class="pill warn">Writing summary, context and phrases…</span>');
+    segs.forEach((x, i) => { const nx = segs[i + 1]; if (!x.end || secs(x.end) <= secs(x.start)) x.end = nx ? nx.start : mmss(duration || secs(x.start) + 5); });   // a line ends where the next begins
+    render(); report.segments = segs;
     const tr = segs.map(s => `${s.start} | ${s.speaker}${s.role ? ' (' + s.role + ')' : ''} | ${s.ar} | ${s.en}`).join('\n');
-    const an = await genAny([{ text: anPrompt(tr) }], AN_SCHEMA, 'analysis'); report.analysis = an; renderAnalysis(an);
+    const sec = async (name, prompt, schema, max) => { try { return await genAny([{ text: prompt }], schema, name, { maxOut: max }); } catch (e){ fail(name, e); return null; } };
+    const sum = await sec('summary', sumPrompt(tr), SUM_SCHEMA, 4096) || {};
+    const ctx = await sec('context', ctxPrompt(tr), CTX_SCHEMA, 4096);
+    const lrn = await sec('learn', learnPrompt(tr), LEARN_SCHEMA, 6144);
+    const an = cleanAnalysis(sum, ctx?.context, lrn?.learn, tr); report.analysis = an; renderAnalysis(an);
+    if (an.dropped.length) log(`Checks removed ${an.dropped.length} item(s): ${an.dropped.map(d => d.where + (d.why ? ' (' + d.why + ')' : '')).join(', ')}`);
     status(`<span class="pill">Done</span> <span class="sm">${segs.length} segments, ${new Set(segs.map(s => s.speaker)).size} speakers.</span>`);
   } catch (e){ fail('run', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message)}</span>`); }
   finally {
     if (fo) { const del = () => api('/v1beta/' + fo.name, { method: 'DELETE' }).then(() => log('Deleted the file from Gemini file storage.'));
       try { await del(); } catch (e){ fail('delete file', e); backOnline().then(del).catch(e2 => log('Could not delete it; Gemini removes it by itself within 48 hours.')); } }
-    running = false; keepAwake(false); $('run').disabled = false; $('copy').hidden = false; $('copyNote').hidden = false;
+    running = false; keepAwake(false); ready(); $('copy').hidden = false; $('copyNote').hidden = false;
+  }
+};
+
+const CMP = ['gemini-3.5-transcribe', 'gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.7-flash', 'gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-flash-lite-latest'];
+$('compare').onclick = async () => {
+  const mime = MIME[(file.name.split('.').pop() || '').toLowerCase()], list = CMP.filter(m => (report.modelsAvailable || []).includes(m));
+  $('compare').disabled = $('run').disabled = true; running = true; keepAwake(true); $('log').textContent = '';
+  Object.assign(report, { started: new Date().toISOString(), steps: [], errors: [], usage: [], compare: [], durationSec: Math.round(duration) });
+  const row = r => `<tr><td>${esc(r.model)}</td><td>${r.ok ? `${r.seconds} s` : `<span class="pill bad">${esc(r.error.slice(0, 40))}</span>`}</td><td>${r.ok ? r.segments + ' lines · ' + r.speakers + ' spk' : ''}</td></tr>`;
+  const draw = () => $('cmp').innerHTML = `<table class="sm" style="width:100%;border-collapse:collapse"><tr><th align="left">Model</th><th align="left">Time</th><th align="left">Result</th></tr>${report.compare.map(row).join('')}</table>`;
+  let fo = null;
+  try {
+    log(`Speed test on ${list.length} models: ${list.join(', ')}`); fo = await upload(file, mime); log('Uploaded.');
+    const part = { file_data: { mime_type: mime, file_uri: fo.uri } }, to = mmss(Math.min(duration || 600, 600) + 5);
+    for (const m of list){
+      const t0 = performance.now();
+      try { const j = await gen(m, [part, { text: segPrompt('0:00', to, []) }], SEG_SCHEMA, `speed test [${m}]`, { timeoutMs: 150000 });
+        const sg = (j.segments || []).filter(x => x && (x.ar || x.en)), u = report.usage[report.usage.length - 1] || {};
+        report.compare.push({ model: m, ok: true, seconds: u.seconds, firstByte: u.firstByteSeconds, how: u.how, segments: sg.length, speakers: new Set(sg.map(x => x.speaker)).size, withEnd: sg.filter(x => x.end).length, last: sg.at(-1)?.start, sample: sg.slice(0, 4).map(x => ({ t: x.start, sp: x.speaker, ar: x.ar, en: x.en })) });
+      } catch (e){ report.compare.push({ model: m, ok: false, seconds: +((performance.now() - t0) / 1000).toFixed(1), error: e.message }); log(`${m}: ${e.message.slice(0, 120)}`); }
+      draw();
+    }
+    status(`<span class="pill">Speed test done</span> <span class="sm">${report.compare.filter(r => r.ok).length} of ${list.length} models answered.</span>`);
+  } catch (e){ fail('speed test', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message)}</span>`); }
+  finally {
+    if (fo) { try { await api('/v1beta/' + fo.name, { method: 'DELETE' }); log('Deleted the file from Gemini file storage.'); } catch (e){ fail('delete file', e); } }
+    running = false; keepAwake(false); ready(); $('copy').hidden = false; $('copyNote').hidden = false;
   }
 };
 
@@ -312,7 +378,7 @@ document.querySelector('.views').onclick = e => { const b = e.target.closest('[d
 const items = (title, list) => list && list.length ? `<h3 style="margin:10px 0 4px;font-size:15px">${title}</h3><ul>${list.map(x => `<li><span class="st ${esc(x.status)}">${esc(x.status)}</span>${esc(x.text)}${x.times?.length ? ` <span class="muted sm">(${x.times.map(esc).join(', ')})</span>` : ''}</li>`).join('')}</ul>` : '';
 function renderAnalysis(a){
   const s = a.summary || {};
-  $('sum').hidden = false; $('sum').innerHTML = `<h2>Summary</h2><p>${esc(s.overview)}</p>${items('Key discussion points', s.key_points)}${items('Symptoms and medical findings', s.symptoms_findings)}${items('Treatment and medication', s.treatment_medication)}${items('Decisions and next steps', s.decisions_next_steps)}${items('Important details', s.important_details)}`;
+  $('sum').hidden = !s.overview; $('sum').innerHTML = `<h2>Summary</h2><p>${esc(s.overview)}</p>${items('Key discussion points', s.key_points)}${items('Symptoms and medical findings', s.symptoms_findings)}${items('Treatment and medication', s.treatment_medication)}${items('Decisions and next steps', s.decisions_next_steps)}${items('Important details', s.important_details)}`;
   $('ctx').hidden = !(a.context || []).length; $('ctx').innerHTML = `<h2>Extra context</h2>` + (a.context || []).map(c => `<div class="item"><div class="ar" lang="ar">${esc(c.ar)}</div><p><b>${esc(c.lat)}</b> <span class="pill">${esc(c.kind)}</span></p><p>${esc(c.meaning)}</p><p class="muted sm">${esc(c.explanation)}${c.alternatives ? ' · Other readings: ' + esc(c.alternatives) : ''}</p></div>`).join('');
   $('learn').hidden = !(a.learn || []).length; $('learn').innerHTML = `<h2>Learn</h2>` + (a.learn || []).map(l => `<div class="item"><div class="ar" lang="ar">${esc(l.ar)}</div><p><b>${esc(l.lat)}</b> · ${esc(l.en)} <span class="pill">${esc(l.register)}</span></p><p class="sm">${esc(l.usage)}</p><p class="muted sm">${esc(l.medical_context)}</p>${(l.alternatives || []).length ? `<p class="sm muted">Also heard: ${l.alternatives.map(x => `<span lang="ar" dir="rtl">${esc(x.ar)}</span> (${esc(x.lat)}, ${esc(x.en)})`).join('; ')}</p>` : ''}</div>`).join('');
 }
