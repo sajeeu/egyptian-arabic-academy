@@ -21,7 +21,7 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
-var TR_VERSION = 'translator-test v10';
+var TR_VERSION = 'translator-test v11';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -37,6 +37,7 @@ function trGate(){
   if (avail.some(trQuotaOk)) return { ok: true };
   return { ok: false, until: Math.min(...avail.map(m => trQuota()[m])) };
 }
+var trIn = until => { const mins = Math.max(1, Math.round((until - Date.now()) / 60000)), h = Math.floor(mins / 60), m = mins % 60; return `in about ${h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`}`; };
 var trUntilText = until => { const mins = Math.max(1, Math.round((until - Date.now()) / 60000)), h = Math.floor(mins / 60), m = mins % 60;
   return `${trWhen(until)} (in about ${h ? `${h} h${m ? ` ${m} min` : ''}` : `${m} min`})`; };
 var TR_MIME = { mp3: 'audio/mp3', m4a: 'audio/m4a', mp4: 'audio/m4a', aac: 'audio/aac', wav: 'audio/wav', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/opus', flac: 'audio/flac', webm: 'audio/webm', aiff: 'audio/aiff', amr: null, '3gp': null };
@@ -481,13 +482,13 @@ async function trProcess(rec){
       if (/^STOPPED/.test(e.message)){ delete rec.redo; await trPut(rec); return true; }
       if (e.offline){ trLog(rec, 'redo: connection lost; trying again in 30 s'); await trPut(rec); return false; }
       rec.redoAt = e.quota ? e.retryAt : Date.now() + 10 * 60000;
-      rec.redoNote = e.quota ? `Paused: today's free limit for the accurate Gemini models is used up, and lighter models aren't used because they make mistakes. It tries again by itself at ${trUntilText(rec.redoAt)}.` : e.busy ? 'The free Gemini service is busy. It tries again by itself in about 10 minutes.' : trPlain(e);
+      rec.redoNote = e.quota ? `Paused until ${trWhen(rec.redoAt)}: today's free limit for the accurate models is used up. It starts again ${trIn(rec.redoAt)}.` : e.busy ? 'The free Gemini service is busy. It tries again by itself in about 10 minutes.' : trPlain(e);
       if (!e.quota && !e.busy) delete rec.redo;
       trLog(rec, 'redo: ' + e.message); await trPut(rec); return true;
     }
     if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.error = 'Stopped by you'; await trPut(rec); return true; }
     if (e.offline){ trLog(rec, 'connection still lost after several tries; trying again in 30 s, or when the page is opened'); rec.waitNet = Date.now(); await trPut(rec); return false; }
-    if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Paused: today's free limit for the accurate Gemini models is used up. Lighter models are still available, but they make translation mistakes, so they aren't used. It continues by itself at ${trUntilText(e.retryAt)} while the Translator is open.`; }
+    if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Paused until ${trWhen(e.retryAt)}: today's free limit for the accurate models is used up. It starts again ${trIn(e.retryAt)}.`; }
     else if (e.busy){ rec.status = 'waiting'; rec.retryAt = Date.now() + 10 * 60000; rec.error = 'The free Gemini service stayed busy. It tries again in about 10 minutes while the Translator is open.'; }
     else { rec.status = 'failed'; rec.error = trPlain(e); }
     trLog(rec, e.message); await trPut(rec); trNotify(rec);
@@ -523,9 +524,8 @@ function trHome(){
   $app.innerHTML = `<div class="tr">
     <div class="tr-head"><h1 class="title">Conversation Translator</h1>
       <p class="muted">Upload a recorded conversation in Egyptian Arabic. You get the Arabic transcript, an English translation, a summary and phrases to learn.</p></div>
-    ${key && !gate.ok ? `<div class="card tr-paused" id="trPaused">${trI('clock')}<div><b>Translating is paused${gate.until ? ` until ${trEsc(trWhen(gate.until))}` : ''}</b>
-      <p>Today's free limit for the accurate Gemini models is used up. Lighter models are still available, but in testing they made translation mistakes, so they aren't used: the Translator never shows a translation it can't trust.</p>
-      <p class="muted small">${gate.until ? `The accurate models are available again at ${trEsc(trUntilText(gate.until))}. You can choose a recording then.` : 'No accurate Gemini model is available for this key.'}</p></div></div>` : ''}
+    ${key && !gate.ok ? `<div class="card tr-paused" id="trPaused">${trI('clock')}<div><b>Translating paused${gate.until ? ` until ${trEsc(trWhen(gate.until))}` : ''}</b>
+      <p>${gate.until ? `Today's free limit for the accurate models is used up. It starts again ${trIn(gate.until)}.` : 'No accurate Gemini model is available for this key.'}</p></div></div>` : ''}
     ${key ? '' : `<div class="card tr-nokey">${trI('alert')}<div><b>Add your Gemini key first.</b><p class="muted">The Translator uses the same key as the voice tutor. Add it in Settings.</p></div><button class="btn primary" onclick="show('progress')">Open Settings</button></div>`}
     <section class="card tr-up" aria-labelledby="tr-up-h">
       <h2 id="tr-up-h" class="tr-h2">${trI('upload')}Upload a recording</h2>
