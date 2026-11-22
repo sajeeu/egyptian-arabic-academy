@@ -86,3 +86,7 @@
 .tr-alt{font-family:var(--font-ar);font-weight:700}
 .tr-tech{font-size:14px;color:var(--muted)} .tr-tech summary{cursor:pointer;font-weight:700;padding:6px 2px}
 .tr-tech p{margin:6px 0 10px}
+
+/* Report for Claude: small, out of the way, available at any moment */
+.tr-report{margin-top:6px;background:none;border:0;padding:8px;font:inherit;font-size:13px;font-weight:700;color:var(--muted);text-decoration:underline;cursor:pointer}
+.tr-report-box{width:100%;min-height:160px;margin-top:8px;font:12px/1.4 ui-monospace,Consolas,monospace;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--sunk);color:var(--ink)}

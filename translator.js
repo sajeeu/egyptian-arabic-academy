@@ -21,6 +21,7 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
+var TR_VERSION = 'translator-test v2';
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
 var TR_FIRST_DATA_MS = 120000, TR_ANSWER_MS = 300000;     // give up on a model that sends nothing for 2 minutes
@@ -103,14 +104,14 @@ async function trStream(model, body, signal, timeoutMs = TR_ANSWER_MS){
   const ac = new AbortController(); let why = 'total';
   const cap = setTimeout(() => ac.abort(), timeoutMs), first = setTimeout(() => { why = 'first'; ac.abort(); }, Math.min(TR_FIRST_DATA_MS, timeoutMs));
   const onStop = () => { why = 'stop'; ac.abort(); }; signal?.addEventListener('abort', onStop);
-  const t0 = performance.now(); let text = '', finish = null, gotData = false;
+  const t0 = performance.now(); let text = '', finish = null, gotData = false, firstData = null;
   try {
     const r = await fetch(`${TR_API}/v1beta/models/${model}:streamGenerateContent?alt=sse`, { method: 'POST', signal: ac.signal, headers: { 'x-goog-api-key': trKey(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok){ const tx = await r.text(); let j = null; try { j = JSON.parse(tx); } catch {} throw new Error(`${r.status} ${(j && (j.error || j[0]?.error)?.message) || tx.slice(0, 300)}`); }
     const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
     for (;;){
       const { done, value } = await rd.read(); if (done) break;
-      if (!gotData){ gotData = true; clearTimeout(first); }
+      if (!gotData){ gotData = true; firstData = Math.round((performance.now() - t0) / 1000); clearTimeout(first); }
       buf += dec.decode(value, { stream: true });
       let k; while ((k = buf.indexOf('\n')) >= 0){
         const line = buf.slice(0, k).trim(); buf = buf.slice(k + 1);
@@ -121,7 +122,7 @@ async function trStream(model, body, signal, timeoutMs = TR_ANSWER_MS){
         if (c?.finishReason) finish = c.finishReason;
       }
     }
-    return { text, finish, seconds: Math.round((performance.now() - t0) / 1000) };
+    return { text, finish, firstData, seconds: Math.round((performance.now() - t0) / 1000) };
   } catch (e){
     if (e.name === 'AbortError') throw new Error(why === 'stop' ? 'STOPPED' : why === 'first' ? `TIMEOUT ${model} sent nothing in ${Math.round(TR_FIRST_DATA_MS / 1000)} s` : `TIMEOUT ${model} took longer than ${Math.round(timeoutMs / 1000)} s`);
     throw e;
@@ -141,7 +142,7 @@ async function trGen(model, parts, schema, o){
         const res = await trStream(model, { contents: [{ role: 'user', parts }], generationConfig: { maxOutputTokens: Math.min(o.limits[model] || 8192, o.maxOut || 65536), ...tries[t] } }, o.signal);
         if (trLooped(res.text)){ const e = new Error('LOOP the answer kept repeating itself'); e.loop = true; throw e; }
         const m = res.text.match(/\{[\s\S]*\}/); if (!m) throw new Error(`No usable answer (finish: ${res.finish})`);
-        o.rec && trLog(o.rec, `${o.label}: ${model} answered in ${res.seconds} s`);
+        o.rec && trLog(o.rec, `${o.label}: ${model} answered: first data after ${res.firstData} s, finished after ${res.seconds} s (${res.finish || 'no finish reason'})`);
         return JSON.parse(m[0]);
       } catch (e){
         last = e;
@@ -168,15 +169,15 @@ async function trGenAny(parts, schema, o){
     for (const model of order){
       for (let t = 0; t < 2; t++){
         if (o.signal?.aborted) throw new Error('STOPPED');
-        try { trLive.detail = ''; trTick(); const j = await trGen(model, parts, schema, o); o.prefer = model; o.rec && (o.rec.models = [...new Set([...(o.rec.models || []), model])]); return j; }
+        try { trLive.detail = ''; trTick(); o.rec && trLog(o.rec, `${o.label || 'step'}: asking ${model}`); const j = await trGen(model, parts, schema, o); o.prefer = model; o.rec && (o.rec.models = [...new Set([...(o.rec.models || []), model])]); return j; }
         catch (e){
           last = e; const m = e.message || '';
           if (/^STOPPED/.test(m)) throw e;
-          if (/^TIMEOUT/.test(m)){ o.rec && trLog(o.rec, m); break; }
+          if (/^TIMEOUT/.test(m)){ o.rec && trLog(o.rec, `${o.label || 'step'}: ${m}`); break; }
           if (/^429/.test(m)){ const until = Date.now() + trRetryIn(m); trQuotaSet(model, until); soonest = Math.min(soonest, until); o.rec && trLog(o.rec, `${model}: free limit reached for now`); break; }
           if (!/^(503|500|502|504)/.test(m) && !(e instanceof TypeError)) throw e;
           if (e instanceof TypeError){ const err = new Error('OFFLINE'); err.offline = true; throw err; }   // connection lost (phone paused the page or no network)
-          o.rec && trLog(o.rec, `${model}: busy`);
+          o.rec && trLog(o.rec, `${o.label || 'step'}: ${model} busy (${m.slice(0, 60)})`);
           if (t === 0) await trWaitBusy(6000, o.signal);
         }
       }
@@ -255,7 +256,7 @@ function trSilentWav(){   // 2 seconds of near-silence (tiny noise, inaudible), 
 function trKeepAwake(on){      // call from a tap when turning on: phones only start audio after a tap
   try {
     if (on){
-      if (!trAudioEl){ trAudioEl = new Audio(trSilentWav()); trAudioEl.loop = true; trAudioEl.setAttribute('playsinline', ''); }
+      if (!trAudioEl){ trAudioEl = new Audio(trSilentWav()); trAudioEl.loop = true; trAudioEl.setAttribute('playsinline', ''); trAudioEl.addEventListener('pause', () => trAwake && trEvent('screen-off audio was paused by the phone')); trAudioEl.addEventListener('playing', () => trEvent('screen-off audio playing')); }
       const p = trAudioEl.play(); trAwake = true;
       if (p && p.catch) p.catch(() => { trAwake = false; trTick(); });
       trMedia();
@@ -284,7 +285,8 @@ var trLive = { id: null, step: '', stepText: '', detail: '', started: 0 };
 var trRunning = false, trCtl = null, trWasOffline = false;
 var TR_STEPS = [['upload', 'Uploading the recording'], ['transcribe', 'Writing the Arabic and the English'], ['summary', 'Summarising the conversation'], ['context', 'Explaining expressions and terms'], ['learn', 'Choosing phrases to learn']];
 function trTick(){ trMedia(); trRefreshLoader(); }
-function trSetStep(rec, step, text){ trLive.id = rec.id; trLive.step = step; trLive.stepText = text; trLive.detail = ''; trTick(); }
+var trCurRec = null;
+function trSetStep(rec, step, text){ trLog(rec, `step: ${text}`); trLive.id = rec.id; trLive.step = step; trLive.stepText = text; trLive.detail = ''; trTick(); }
 async function trRun(){
   if (trRunning) return; trRunning = true; trWasOffline = false;
   if (!trAwake) trKeepAwake(true);                                   // allowed if she has tapped in the app before; otherwise the loader offers a button
@@ -300,7 +302,8 @@ async function trRun(){
     if (trWasOffline && document.visibilityState === 'visible' && navigator.onLine) setTimeout(trResume, 4000); }
 }
 async function trProcess(rec){
-  trCtl = new AbortController(); const signal = trCtl.signal;
+  trCtl = new AbortController(); const signal = trCtl.signal; trCurRec = rec;
+  trLog(rec, `job ${rec.parts?.length || rec.segments ? 'resumed' : 'started'} (screen-off mode ${trAwake ? 'on' : 'off'}, notifications ${window.Notification ? Notification.permission : 'not available'})`);
   rec.status = 'working'; rec.error = ''; rec.retryAt = 0; rec.startedAt = rec.startedAt || Date.now(); trLive.started = Date.now(); await trPut(rec);
   const o = { signal, rec, prefer: rec.models?.at(-1) };
   try {
@@ -366,8 +369,10 @@ addEventListener('load', () => {
   try { const q = new URLSearchParams(location.search), id = q.get('tr'); if (id){ q.delete('tr'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); show('trrec', id); } } catch {}
   setTimeout(trResume, 1500);
 });
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') trResume(); });
-addEventListener('online', trResume);
+function trEvent(text){ if (trRunning && trCurRec) trLog(trCurRec, 'phone: ' + text); }
+document.addEventListener('visibilitychange', () => { trEvent(document.visibilityState === 'hidden' ? 'page hidden (screen off or another app)' : 'page visible again'); if (document.visibilityState === 'visible') trResume(); });
+addEventListener('online', () => { trEvent('back online'); trResume(); });
+addEventListener('offline', () => trEvent('went offline'));
 
 /* ---------- Pages ---------- */
 var trPicked = null, trViewing = null;
@@ -454,7 +459,10 @@ async function trRec(id){
       <ol class="tr-steps" id="trSteps"></ol>
       <p class="muted small tr-elapsed" id="trElapsed"></p>
       <div class="tr-load-btns" id="trBtns"></div>
+      <button class="tr-report" id="trReportBtn">Copy report for Claude</button>
+      <textarea class="tr-report-box" id="trReportBox" readonly hidden aria-label="Report"></textarea>
     </section></div>`;
+  document.getElementById('trReportBtn').onclick = () => trCopyReport(id);
   trRefreshLoader();
 }
 var trLoaderTimer = setInterval(() => { if (document.getElementById('trLoader')) trRefreshLoader(); }, 1000);
@@ -514,15 +522,42 @@ async function trResult(rec){
     <div class="tr-tabs" role="tablist">${[['conv', 'Transcript'], ['sum', 'Summary'], ['ctx', 'Context'], ['learn', 'Learn']].map(([k, t]) => `<button role="tab" data-t="${k}" aria-selected="${trTab === k}">${t}</button>`).join('')}</div>
     <div id="trPane"></div>
     <details class="tr-tech"><summary>Technical details</summary><p class="muted small">Models used: ${trEsc((rec.models || []).join(', ') || '–')}. Finished in ${trMMSS(((rec.doneAt || Date.now()) - (rec.startedAt || rec.created)) / 1000)}.${rec.dropped?.length ? ` The checks removed ${rec.dropped.length} item(s) that were not in the transcript or not usable.` : ''}</p>
-      <button class="btn ghost" id="trCopy">Copy technical report</button></details>
+      <button class="btn ghost" id="trCopy">Copy report for Claude</button><textarea class="tr-report-box" id="trReportBox" readonly hidden aria-label="Report"></textarea></details>
     <button class="btn danger block" id="trDelRes">${trI('trash', 'sm')}Delete this recording</button></div>`;
   $app.querySelectorAll('.tr-tabs button').forEach(b => b.onclick = () => { trTab = b.dataset.t; $app.querySelectorAll('.tr-tabs button').forEach(x => x.setAttribute('aria-selected', x === b)); trPane(rec); });
   trTwoTap(document.getElementById('trDelRes'), 'Tap again to delete', async () => { await trDelete(rec.id); show('tr'); });
-  document.getElementById('trCopy').onclick = async () => {
-    const r = { ...rec, page: 'translator v1' }; delete r.parts;
-    try { await navigator.clipboard.writeText(JSON.stringify(r, null, 1)); toast('Technical report copied.'); } catch { toast('Copying is not allowed here.'); } };
+  document.getElementById('trCopy').onclick = () => trCopyReport(rec.id);
   trPane(rec);
 }
+/* Report for Claude: what happened, step by step, with timings and phone events. Never includes the key. */
+function trReport(rec){
+  const live = trRunning && trLive.id === rec.id, r = {
+    page: TR_VERSION, at: new Date().toString(),
+    recording: { name: rec.name, sizeMB: +(rec.size / 1048576).toFixed(2), type: rec.mime, length: trMMSS(rec.duration), created: new Date(rec.created).toString() },
+    status: rec.status, message: rec.error || '', waitingUntil: rec.retryAt ? new Date(rec.retryAt).toString() : '',
+    now: live ? { step: trLive.stepText, detail: trLive.detail, workingFor: trMMSS((Date.now() - trLive.started) / 1000) } : 'not running',
+    totalTime: rec.doneAt ? trMMSS((rec.doneAt - (rec.startedAt || rec.created)) / 1000) : trMMSS((Date.now() - (rec.startedAt || rec.created)) / 1000) + ' so far',
+    progress: { uploaded: !!rec.file, partsDone: (rec.parts || []).length, partsTotal: Math.max(1, Math.ceil((rec.duration || TR_STEP_SEC) / TR_STEP_SEC)), lines: rec.segments?.length ?? null,
+      summary: rec.summary === undefined ? 'not yet' : rec.summary?.error ? 'error' : 'done', context: rec.context === undefined ? 'not yet' : rec.context?.error ? 'error' : 'done', learn: rec.learn === undefined ? 'not yet' : rec.learn?.error ? 'error' : 'done' },
+    modelsUsed: rec.models || [], log: rec.log || [], removedByChecks: rec.dropped || [],
+    phone: { installedApp: matchMedia('(display-mode: standalone)').matches, online: navigator.onLine, visible: document.visibilityState, screenOffMode: trAwake, screenOffAudioPlaying: !!(trAudioEl && !trAudioEl.paused),
+      notifications: window.Notification ? Notification.permission : 'not available', browser: navigator.userAgent },
+    freeLimitsUsedUp: Object.fromEntries(Object.entries(trQuota()).map(([m, t]) => [m, new Date(t).toString()])),
+    transcript: rec.segments || (rec.parts || []).flat(), summary: rec.summary, context: rec.context, learn: rec.learn,
+  };
+  return JSON.stringify(r, null, 1);
+}
+// While a job runs, its newest log lines are in memory and not saved yet, so the report uses the live record.
+async function trReportText(id){ const rec = trRunning && trCurRec?.id === id ? trCurRec : await trGet(id).catch(() => null); return rec ? trReport(rec) : ''; }
+async function trCopyReport(id){
+  const text = await trReportText(id); if (!text) return;
+  try { await navigator.clipboard.writeText(text); toast('Report copied. Paste it in the chat with Claude.'); return; } catch {}
+  try { const t = document.createElement('textarea'); t.value = text; t.setAttribute('readonly', ''); t.style.cssText = 'position:fixed;top:0;left:0;opacity:0'; document.body.append(t); t.select();
+    const ok = document.execCommand('copy'); t.remove(); if (ok){ toast('Report copied. Paste it in the chat with Claude.'); return; } } catch {}
+  const box = document.getElementById('trReportBox');                 // copying not allowed: show it so it can be selected by hand
+  if (box){ box.hidden = false; box.value = text; box.focus(); box.select(); toast('Select all the text in the box and copy it.'); }
+}
+
 var trBadge = { stated: ['Said', 'tr-said'], suggested: ['Suggested', 'tr-sugg'], uncertain: ['Unclear', 'tr-unc'] };
 function trTimes(times){ return (times || []).map(t => `<button class="tr-time" data-at="${trEsc(t)}">${trEsc(t)}</button>`).join(''); }
 function trSectionError(v){ return v && v.error ? `<div class="tr-err">${trI('alert')}<span>This part could not be created: ${trEsc(v.error)}</span><button class="btn ghost tr-retry">Try again</button></div>` : ''; }
