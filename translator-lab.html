@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Translator Test</title>
+<!-- Phase 0 test page for the planned Conversation Translator. Not linked from the app. It only READS the Gemini key
+     the Academy saved in this browser; it never writes to the app's storage, so lessons and progress are untouched. -->
+<style>
+:root{--bg:#F3F6F2;--surface:#fff;--sunk:#EEF2EE;--ink:#10231A;--muted:#5E6F66;--ink-2:#46584E;--line:#DCE4DD;--pri:#1F7A4D;--on-pri:#fff;--pale:#E3F1E8;--pale-ink:#1B5E3C;--amber:#8A5A00;--amber-pale:#FFF3D6;--danger:#B42318;--danger-pale:#FDECEA;
+  --font:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;--font-ar:"Noto Naskh Arabic","Segoe UI","Geeza Pro",Tahoma,sans-serif}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1512;--surface:#18201b;--sunk:#131a16;--ink:#e8efe9;--muted:#9aa89f;--ink-2:#b7c4bb;--line:#27322b;--pri:#3DBE7E;--on-pri:#06130c;--pale:#16301f;--pale-ink:#8fe0b4;--amber:#f5c46b;--amber-pale:#3a2c10;--danger:#ff8a80;--danger-pale:#3a1714}}
+*{box-sizing:border-box} [hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--font)}
+main{max-width:860px;margin:0 auto;padding:16px 16px 60px;display:flex;flex-direction:column;gap:14px}
+h1{margin:4px 0 0;font-size:24px;letter-spacing:-.02em} h2{margin:0 0 8px;font-size:17px}
+p{margin:0} .muted{color:var(--muted)} .sm{font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 18px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:700;cursor:pointer}
+.btn.primary{background:var(--pri);color:var(--on-pri);border-color:transparent} .btn:disabled{opacity:.5;cursor:default}
+select,input[type=file]{font:inherit;color:var(--ink);background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:10px;width:100%}
+audio{width:100%}
+.pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:12.5px;font-weight:700;background:var(--pale);color:var(--pale-ink)}
+.pill.warn{background:var(--amber-pale);color:var(--amber)} .pill.bad{background:var(--danger-pale);color:var(--danger)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px} .kv b{color:var(--muted);font-weight:600}
+#log{font:12.5px/1.5 ui-monospace,Consolas,monospace;background:var(--sunk);border-radius:10px;padding:10px;white-space:pre-wrap;max-height:260px;overflow:auto}
+.seg{display:grid;grid-template-columns:1fr;gap:6px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);text-align:left;font:inherit;color:inherit;cursor:pointer;width:100%}
+.seg.on{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri) inset}
+.seg-top{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12.5px;color:var(--muted)}
+.ar{font-family:var(--font-ar);font-size:21px;font-weight:600;line-height:1.7;direction:rtl;text-align:right}
+.en{font-size:15px;color:var(--ink-2)}
+@media (min-width:720px){.seg.sbs{grid-template-columns:1fr 1fr;align-items:start} .seg.sbs .seg-top{grid-column:1/-1}}
+.segs{display:flex;flex-direction:column;gap:8px}
+.views{display:flex;gap:6px;flex-wrap:wrap} .views .btn{min-height:40px;padding:0 14px} .views .btn.on{background:var(--pale);color:var(--pale-ink);border-color:transparent}
+ul{margin:0;padding-left:20px} li{margin:3px 0}
+.st{font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-right:6px}
+.st.stated{color:var(--pale-ink)} .st.suggested{color:var(--amber)} .st.uncertain{color:var(--danger)}
+.item{padding:10px 0;border-top:1px solid var(--line)} .item:first-child{border-top:0}
+</style>
+</head>
+<body>
+<main>
+  <div><span class="pill warn">Test page · not part of the app</span><h1>Conversation Translator test</h1>
+    <p class="muted sm">Phase 0 check of real Egyptian Arabic transcription. Uses the Gemini key the Academy app saved in this browser. Nothing here is saved, and the app's lessons and progress are not touched.</p></div>
+
+  <section class="card"><h2>1. Key and models</h2><div id="keyState"></div>
+    <label class="sm muted" for="model">Model</label><select id="model" disabled><option>Checking…</option></select>
+    <p class="sm muted" id="modelNote"></p></section>
+
+  <section class="card"><h2>2. Recording</h2>
+    <input type="file" id="file" accept="audio/*,.mp3,.m4a,.wav,.aac,.ogg,.opus,.flac,.webm">
+    <div class="kv" id="meta" hidden></div><audio id="player" controls hidden></audio></section>
+
+  <section class="card"><h2>3. Run</h2>
+    <button class="btn primary" id="run" disabled>Transcribe, translate and analyse</button>
+    <p class="sm muted">Long recordings are done in 10-minute parts, like the real Translator will.</p>
+    <div id="status"></div><div id="log" hidden></div>
+    <button class="btn" id="copy" hidden>Copy report</button>
+    <p class="sm muted" id="copyNote" hidden>The report has the transcript, timings and any errors, never the key. Paste it in the chat with Claude.</p></section>
+
+  <section class="card" id="out" hidden><h2>Transcript and translation</h2>
+    <div class="views"><button class="btn on" data-v="sbs">Side by side</button><button class="btn" data-v="ar">Arabic</button><button class="btn" data-v="en">English</button></div>
+    <div class="segs" id="segs"></div></section>
+  <section class="card" id="sum" hidden></section>
+  <section class="card" id="ctx" hidden></section>
+  <section class="card" id="learn" hidden></section>
+</main>
+<script>
+const API = 'https://generativelanguage.googleapis.com';
+const key = (() => { try { return localStorage.getItem('gemini_key') || ''; } catch { return ''; } })();
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const report = { page: 'translator-lab v1', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
+let file = null, duration = 0, segs = [], view = 'sbs';
+const OUT = {};                                                       // each model's longest allowed answer
+
+const log = (m) => { const l = $('log'); l.hidden = false; const t = new Date().toLocaleTimeString(); l.textContent += `[${t}] ${m}\n`; l.scrollTop = l.scrollHeight; report.steps.push(`${t} ${m}`); };
+const status = (html) => { $('status').innerHTML = html; };
+const fail = (where, e) => { const msg = (e && e.message) || String(e); report.errors.push({ where, msg }); log(`ERROR in ${where}: ${msg}`); };
+const hdr = extra => ({ 'x-goog-api-key': key, ...extra });          // the key goes in a header, never in a URL
+async function api(path, opts = {}){
+  const r = await fetch(API + path, { ...opts, headers: hdr(opts.headers || {}) });
+  const text = await r.text(); let j = null; try { j = JSON.parse(text); } catch {}
+  if (!r.ok) throw new Error(`${r.status} ${(j && j.error && j.error.message) || text.slice(0, 300)}`);
+  return { r, j, text };
+}
+const mmss = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(x).padStart(2, '0'); };
+const secs = t => { const p = String(t || '').split(':').map(Number); if (p.some(isNaN)) return 0; return p.reduce((a, v) => a * 60 + v, 0); };
+
+/* 1. Key and models */
+const PREFER = ['gemini-3.8-flash', 'gemini-4-hydrogen', 'gemini-3.6-flash', 'gemini-3.5-transcribe', 'gemini-3.5-flash-lite', 'gemini-3.1-pro-preview'];
+(async () => {
+  if (!key){ $('keyState').innerHTML = `<span class="pill bad">No key found</span> <span class="sm">Open the Academy app in this same browser, save your Gemini key in Settings, then reload this page.</span>`; $('model').innerHTML = '<option>Needs a key</option>'; return; }
+  $('keyState').innerHTML = `<span class="pill">Key found</span> <span class="sm muted">from the Academy app (not shown)</span>`;
+  try {
+    let models = [], tok = '';
+    do { const { j } = await api(`/v1beta/models?pageSize=200${tok ? '&pageToken=' + tok : ''}`); models = models.concat(j.models || []); tok = j.nextPageToken || ''; } while (tok);
+    const gen = models.filter(m => (m.supportedGenerationMethods || []).includes('generateContent')).map(m => ({ id: m.name.replace('models/', ''), out: m.outputTokenLimit, inp: m.inputTokenLimit, name: m.displayName }));
+    report.modelsAvailable = gen.map(m => m.id); gen.forEach(m => OUT[m.id] = m.out);
+    const sel = $('model'); sel.innerHTML = '';
+    const ordered = [...PREFER.map(p => gen.find(m => m.id === p)).filter(Boolean), ...gen.filter(m => !PREFER.includes(m.id) && /gemini/.test(m.id) && !/embed|image|tts|live|veo|imagen/.test(m.id))];
+    ordered.forEach(m => sel.add(new Option(`${m.id}${m.out ? ` · max output ${m.out}` : ''}`, m.id)));
+    sel.disabled = !ordered.length;
+    $('modelNote').textContent = ordered.length ? `${gen.length} models can be used with this key. The first one is suggested.` : 'No suitable model found for this key.';
+    log(`Models with generateContent: ${gen.map(m => m.id).join(', ')}`);
+    ready();
+  } catch (e){ fail('list models', e); $('keyState').innerHTML += ` <span class="pill bad">Key check failed</span>`; }
+})();
+
+/* 2. Recording */
+const MIME = { mp3: 'audio/mp3', m4a: 'audio/m4a', mp4: 'audio/m4a', wav: 'audio/wav', aac: 'audio/aac', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/opus', flac: 'audio/flac', webm: 'audio/webm', aiff: 'audio/aiff' };
+$('file').onchange = () => {
+  file = $('file').files[0] || null; duration = 0; if (!file) return ready();
+  const ext = (file.name.split('.').pop() || '').toLowerCase(), mime = MIME[ext];
+  const p = $('player'); p.src = URL.createObjectURL(file); p.hidden = false;
+  const show = () => { $('meta').hidden = false; $('meta').innerHTML = `<b>File</b><span>${esc(file.name)}</span><b>Size</b><span>${(file.size / 1048576).toFixed(1)} MB</span>
+    <b>Type</b><span>${esc(file.type || 'unknown')} → sends as ${esc(mime || 'not supported')}</span><b>Length</b><span>${duration ? mmss(duration) : 'reading…'}</span>`; };
+  show(); p.onloadedmetadata = () => { duration = isFinite(p.duration) ? p.duration : 0; show(); ready(); };
+  p.onerror = () => { log('This browser could not read the audio length.'); ready(); };
+  report.file = { name: file.name, sizeMB: +(file.size / 1048576).toFixed(2), browserType: file.type, sentAs: mime || null };
+  if (!mime) status(`<span class="pill bad">Unsupported format</span> <span class="sm">Use MP3, M4A, WAV, AAC or OGG.</span>`);
+  ready();
+};
+function ready(){ $('run').disabled = !(key && file && MIME[(file.name.split('.').pop() || '').toLowerCase()] && !$('model').disabled); }
+
+/* 3. Run */
+async function upload(f, mime){
+  const start = await fetch(API + '/upload/v1beta/files', { method: 'POST', headers: hdr({ 'X-Goog-Upload-Protocol': 'resumable', 'X-Goog-Upload-Command': 'start',
+    'X-Goog-Upload-Header-Content-Length': String(f.size), 'X-Goog-Upload-Header-Content-Type': mime, 'Content-Type': 'application/json' }), body: JSON.stringify({ file: { display_name: 'translator-test' } }) });
+  if (!start.ok) throw new Error(`upload start ${start.status} ${(await start.text()).slice(0, 300)}`);
+  const url = start.headers.get('x-goog-upload-url');
+  if (!url) throw new Error('The upload address was not readable in this browser (header not exposed).');
+  const done = await fetch(url, { method: 'POST', headers: { 'X-Goog-Upload-Offset': '0', 'X-Goog-Upload-Command': 'upload, finalize' }, body: f });
+  const j = await done.json().catch(() => null);
+  if (!done.ok || !j?.file) throw new Error(`upload ${done.status} ${JSON.stringify(j).slice(0, 300)}`);
+  let fo = j.file;
+  for (let i = 0; fo.state === 'PROCESSING' && i < 90; i++){ await new Promise(r => setTimeout(r, 2000)); fo = (await api('/v1beta/' + fo.name)).j; }
+  if (fo.state !== 'ACTIVE') throw new Error('File not ready: ' + fo.state);
+  return fo;
+}
+const b64 = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(f); });
+
+// Ask for JSON. Tries the documented schema field first, then plain JSON mode, then a prompt-only request; reports which worked.
+async function gen(model, parts, schema, label){
+  const tries = [
+    ['responseSchema', { responseMimeType: 'application/json', responseSchema: schema }],
+    ['responseJsonSchema', { responseMimeType: 'application/json', responseJsonSchema: schema }],
+    ['json mode', { responseMimeType: 'application/json' }],
+    ['plain', {}]];
+  let last;
+  for (const [how, cfg] of tries){
+    try {
+      const t0 = performance.now();
+      const { j } = await api(`/v1beta/models/${model}:generateContent`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ role: 'user', parts }], generationConfig: { temperature: 0, maxOutputTokens: Math.min(OUT[model] || 8192, 65536), ...cfg } }) });
+      const cand = j.candidates?.[0]; const text = (cand?.content?.parts || []).map(p => p.text || '').join('');
+      report.usage.push({ step: label, how, seconds: +((performance.now() - t0) / 1000).toFixed(1), finish: cand?.finishReason, usage: j.usageMetadata });
+      const m = text.match(/\{[\s\S]*\}/); if (!m) throw new Error(`No JSON in answer (finish: ${cand?.finishReason}) ${text.slice(0, 200)}`);
+      log(`${label}: done with ${how} in ${((performance.now() - t0) / 1000).toFixed(0)} s (finish: ${cand?.finishReason})`);
+      return JSON.parse(m[0]);
+    } catch (e){ last = e; if (/^(400)/.test(e.message) && /schema|Unknown name|Invalid JSON payload|response/i.test(e.message)) { log(`${label}: ${how} not accepted, trying next way`); continue; } throw e; }
+  }
+  throw last;
+}
+
+const SEG_SCHEMA = { type: 'object', properties: { segments: { type: 'array', items: { type: 'object', properties: {
+  start: { type: 'string' }, end: { type: 'string' }, speaker: { type: 'string' }, role: { type: 'string' }, ar: { type: 'string' }, en: { type: 'string' },
+  unclear: { type: 'boolean' }, check: { type: 'boolean' } }, required: ['start', 'speaker', 'ar', 'en'] } } }, required: ['segments'] };
+const ITEM = { type: 'object', properties: { text: { type: 'string' }, status: { type: 'string', enum: ['stated', 'suggested', 'uncertain'] }, times: { type: 'array', items: { type: 'string' } } }, required: ['text', 'status'] };
+const AN_SCHEMA = { type: 'object', properties: {
+  summary: { type: 'object', properties: { overview: { type: 'string' }, key_points: { type: 'array', items: ITEM }, symptoms_findings: { type: 'array', items: ITEM },
+    treatment_medication: { type: 'array', items: ITEM }, decisions_next_steps: { type: 'array', items: ITEM }, important_details: { type: 'array', items: ITEM } }, required: ['overview'] },
+  context: { type: 'array', items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, kind: { type: 'string' }, meaning: { type: 'string' }, explanation: { type: 'string' }, alternatives: { type: 'string' }, times: { type: 'array', items: { type: 'string' } } }, required: ['ar', 'meaning'] } },
+  learn: { type: 'array', items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' }, usage: { type: 'string' }, medical_context: { type: 'string' },
+    register: { type: 'string', enum: ['everyday', 'formal medical'] }, alternatives: { type: 'array', items: { type: 'object', properties: { ar: { type: 'string' }, lat: { type: 'string' }, en: { type: 'string' } } } } }, required: ['ar', 'lat', 'en'] } } },
+  required: ['summary'] };
+
+const segPrompt = (from, to, speakers) => `You are transcribing a pre-recorded conversation in Egyptian colloquial Arabic (Cairo dialect), most likely in a hospital or clinic. Speakers may include doctors, nurses, patients, parents and hospital staff.
+Transcribe ONLY the part of the audio from ${from} to ${to} (timestamps from the start of the recording).
+Rules:
+- Write the Arabic exactly as spoken, in Egyptian Arabic spelling (for example: مش، دلوقتي، عايز، إزيك، كده), not Modern Standard Arabic. Words said in English (often medical terms or drug names) stay in English, in Latin letters, as spoken.
+- Make a new segment at every change of speaker, and split long turns into sentences. Give start and end as M:SS or H:MM:SS from the start of the whole recording.
+- Label speakers consistently as "Speaker 1", "Speaker 2", and so on.${speakers.length ? ` Speakers found earlier in this recording: ${speakers.join('; ')}. Keep the same labels for the same voices.` : ''} Set role to doctor, nurse, patient, parent, staff or unknown, only from what the conversation supports.
+- Translate each segment into natural English that keeps the intended meaning, not word for word.
+- Where words are unclear or inaudible, write [غير واضح] in the Arabic and [unclear] in the English at that spot and set unclear to true. Never guess, complete or invent missing words.
+- Write medicine names, doses, numbers and instructions exactly as heard; set check to true if you are not fully sure of them.
+- If nobody speaks in this part, return an empty segments list.
+Return JSON: {"segments":[{"start","end","speaker","role","ar","en","unclear","check"}]}.`;
+
+const anPrompt = transcript => `Below is a transcript of a conversation in Egyptian Arabic, most likely in a hospital or clinic, with an English translation of each line. Use ONLY what is in it. Never add facts, diagnoses, drugs or doses that are not said.
+Produce JSON with:
+1. summary: overview (2-3 sentences, what the conversation was about); key_points; symptoms_findings; treatment_medication (include exact doses only if said); decisions_next_steps; important_details (things that must not be overlooked). Each item has text, status ("stated" = clearly said; "suggested" = proposed or recommended but not agreed; "uncertain" = unclear, hedged or contradictory) and times (the segment start times it comes from). Leave a list empty if nothing was said about it.
+2. context: Egyptian expressions, slang, idioms, cultural points, medical terms in plain English, tone or urgency, possible misunderstandings and ambiguous lines. Each: ar (the words), lat (transliteration), kind (slang, idiom, cultural, medical term, tone, ambiguity), meaning, explanation, alternatives (other possible readings if the meaning is uncertain), times.
+3. learn: 6-12 useful expressions from this conversation for a doctor learning Egyptian Arabic. Each: ar, lat (accurate Egyptian transliteration, e.g. "ezzayyak", "delwa'ti"), en, usage (when and how it is used), medical_context, register ("everyday" or "formal medical"), alternatives (other ways people say it, each with ar, lat, en).
+Transcript (time | speaker | Arabic | English):
+${transcript}`;
+
+$('run').onclick = async () => {
+  const mime = MIME[(file.name.split('.').pop() || '').toLowerCase()], model = $('model').value;
+  $('run').disabled = true; $('log').textContent = ''; Object.assign(report, { started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
+  segs = []; ['out', 'sum', 'ctx', 'learn'].forEach(id => $(id).hidden = true);
+  let fo = null, part;
+  try {
+    status('<span class="pill warn">Uploading…</span>'); log(`Model ${model}. File ${file.name}, ${(file.size / 1048576).toFixed(1)} MB, ${mmss(duration)}.`);
+    try { const t0 = performance.now(); fo = await upload(file, mime); part = { file_data: { mime_type: mime, file_uri: fo.uri } }; report.uploadPath = 'files api'; log(`Uploaded to Gemini file storage in ${((performance.now() - t0) / 1000).toFixed(0)} s.`); }
+    catch (e){ fail('file upload', e);
+      if (file.size > 19 * 1048576) throw new Error('Upload failed and the file is too big to send directly (over 19 MB).');
+      log('Sending the audio directly in the request instead.'); part = { inline_data: { mime_type: mime, data: await b64(file) } }; report.uploadPath = 'inline'; }
+    const total = duration || 600, step = 600, parts = Math.max(1, Math.ceil(total / step));
+    for (let i = 0; i < parts; i++){
+      const from = mmss(i * step), to = mmss(Math.min(total, (i + 1) * step) + (i === parts - 1 ? 5 : 0));
+      status(`<span class="pill warn">Transcribing ${from}–${to}${parts > 1 ? ` (part ${i + 1} of ${parts})` : ''}…</span>`);
+      const speakers = [...new Map(segs.map(s => [s.speaker, `${s.speaker}${s.role && s.role !== 'unknown' ? ' (' + s.role + ')' : ''}`])).values()];
+      const j = await gen(model, [part, { text: segPrompt(from, to, speakers) }], SEG_SCHEMA, `part ${i + 1}`);
+      const got = (j.segments || []).filter(s => s && (s.ar || s.en)); segs = segs.concat(got); log(`part ${i + 1}: ${got.length} segments`); render();
+    }
+    report.segments = segs;
+    status('<span class="pill warn">Writing summary, context and phrases…</span>');
+    const tr = segs.map(s => `${s.start} | ${s.speaker}${s.role ? ' (' + s.role + ')' : ''} | ${s.ar} | ${s.en}`).join('\n');
+    const an = await gen(model, [{ text: anPrompt(tr) }], AN_SCHEMA, 'analysis'); report.analysis = an; renderAnalysis(an);
+    status(`<span class="pill">Done</span> <span class="sm">${segs.length} segments, ${new Set(segs.map(s => s.speaker)).size} speakers.</span>`);
+  } catch (e){ fail('run', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message)}</span>`); }
+  finally {
+    if (fo) { try { await api('/v1beta/' + fo.name, { method: 'DELETE' }); log('Deleted the file from Gemini file storage.'); } catch (e){ fail('delete file', e); } }
+    $('run').disabled = false; $('copy').hidden = false; $('copyNote').hidden = false;
+  }
+};
+
+/* Results */
+function render(){
+  $('out').hidden = !segs.length;
+  $('segs').innerHTML = segs.map((s, i) => `<button type="button" class="seg ${view === 'sbs' ? 'sbs' : ''}" data-i="${i}">
+    <span class="seg-top"><b>${esc(s.start)}${s.end ? '–' + esc(s.end) : ''}</b><span class="pill">${esc(s.speaker)}${s.role && s.role !== 'unknown' ? ' · ' + esc(s.role) : ''}</span>${s.unclear ? '<span class="pill warn">unclear part</span>' : ''}${s.check ? '<span class="pill warn">check the audio</span>' : ''}</span>
+    ${view !== 'en' ? `<span class="ar" lang="ar">${esc(s.ar)}</span>` : ''}${view !== 'ar' ? `<span class="en">${esc(s.en)}</span>` : ''}</button>`).join('');
+}
+$('segs').onclick = e => { const b = e.target.closest('.seg'); if (!b) return; const s = segs[+b.dataset.i], p = $('player');
+  document.querySelectorAll('.seg.on').forEach(x => x.classList.remove('on')); b.classList.add('on');
+  p.currentTime = secs(s.start); p.play().catch(() => {}); const end = secs(s.end);
+  if (end > secs(s.start)) { clearInterval(p._t); p._t = setInterval(() => { if (p.currentTime >= end + 0.3 || p.paused){ p.pause(); clearInterval(p._t); b.classList.remove('on'); } }, 200); } };
+document.querySelector('.views').onclick = e => { const b = e.target.closest('[data-v]'); if (!b) return; view = b.dataset.v;
+  document.querySelectorAll('.views .btn').forEach(x => x.classList.toggle('on', x === b)); render(); };
+const items = (title, list) => list && list.length ? `<h3 style="margin:10px 0 4px;font-size:15px">${title}</h3><ul>${list.map(x => `<li><span class="st ${esc(x.status)}">${esc(x.status)}</span>${esc(x.text)}${x.times?.length ? ` <span class="muted sm">(${x.times.map(esc).join(', ')})</span>` : ''}</li>`).join('')}</ul>` : '';
+function renderAnalysis(a){
+  const s = a.summary || {};
+  $('sum').hidden = false; $('sum').innerHTML = `<h2>Summary</h2><p>${esc(s.overview)}</p>${items('Key discussion points', s.key_points)}${items('Symptoms and medical findings', s.symptoms_findings)}${items('Treatment and medication', s.treatment_medication)}${items('Decisions and next steps', s.decisions_next_steps)}${items('Important details', s.important_details)}`;
+  $('ctx').hidden = !(a.context || []).length; $('ctx').innerHTML = `<h2>Extra context</h2>` + (a.context || []).map(c => `<div class="item"><div class="ar" lang="ar">${esc(c.ar)}</div><p><b>${esc(c.lat)}</b> <span class="pill">${esc(c.kind)}</span></p><p>${esc(c.meaning)}</p><p class="muted sm">${esc(c.explanation)}${c.alternatives ? ' · Other readings: ' + esc(c.alternatives) : ''}</p></div>`).join('');
+  $('learn').hidden = !(a.learn || []).length; $('learn').innerHTML = `<h2>Learn</h2>` + (a.learn || []).map(l => `<div class="item"><div class="ar" lang="ar">${esc(l.ar)}</div><p><b>${esc(l.lat)}</b> · ${esc(l.en)} <span class="pill">${esc(l.register)}</span></p><p class="sm">${esc(l.usage)}</p><p class="muted sm">${esc(l.medical_context)}</p>${(l.alternatives || []).length ? `<p class="sm muted">Also heard: ${l.alternatives.map(x => `<span lang="ar" dir="rtl">${esc(x.ar)}</span> (${esc(x.lat)}, ${esc(x.en)})`).join('; ')}</p>` : ''}</div>`).join('');
+}
+$('copy').onclick = async () => {
+  const text = JSON.stringify(report, null, 1);
+  try { await navigator.clipboard.writeText(text); $('copy').textContent = 'Copied'; }
+  catch { const t = document.createElement('textarea'); t.value = text; document.body.append(t); t.select(); document.execCommand('copy'); t.remove(); $('copy').textContent = 'Copied'; }
+  setTimeout(() => $('copy').textContent = 'Copy report', 2500);
+};
+</script>
+</body>
+</html>
