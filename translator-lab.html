@@ -71,7 +71,7 @@ const API = 'https://generativelanguage.googleapis.com';
 const key = (() => { try { return localStorage.getItem('gemini_key') || ''; } catch { return ''; } })();
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const report = { page: 'translator-lab v2', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
+const report = { page: 'translator-lab v3', started: null, model: null, file: null, steps: [], errors: [], usage: [], segments: [], analysis: null };
 let file = null, duration = 0, segs = [], view = 'sbs';
 const OUT = {};                                                       // each model's longest allowed answer
 
@@ -171,6 +171,31 @@ async function gen(model, parts, schema, label){
   }
   throw last;
 }
+// A busy or rate-limited model (503, 500, 504, 429) is retried after a pause; if it stays busy, the next model is tried.
+// Once a model answers, later steps start with it.
+const FALLBACK = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-4-hydrogen', 'gemini-flash-latest'];
+let activeModel = null;
+const wait = (ms, label) => new Promise(res => { const end = Date.now() + ms;
+  const t = setInterval(() => { const left = Math.ceil((end - Date.now()) / 1000); if (left <= 0){ clearInterval(t); res(); } else status(`<span class="pill warn">${esc(label)} · trying again in ${left} s</span>`); }, 250); });
+async function genAny(parts, schema, label){
+  const avail = report.modelsAvailable || [];
+  const chain = [...new Set([activeModel || $('model').value, ...FALLBACK.filter(m => avail.includes(m))])];
+  let last;
+  for (const model of chain){
+    for (let t = 0; t < 3; t++){
+      try { const j = await gen(model, parts, schema, `${label} [${model}]`); if (activeModel !== model) log(`Using ${model} from now on.`); activeModel = model; report.answeredBy = [...new Set([...(report.answeredBy || []), model])]; return j; }
+      catch (e){
+        last = e; const m = e.message || '';
+        if (!/^(503|500|504|429)/.test(m)) throw e;                     // a real error: stop and report it
+        const quota = /^429/.test(m) && /quota|exhaust|per day|limit/i.test(m);
+        fail(`${label} [${model}] busy or limited`, e);
+        if (quota || t === 2){ log(`${model} is ${quota ? 'out of free quota' : 'still busy'}; trying the next model.`); break; }
+        await wait([8000, 20000][t], `${model} is busy`);
+      }
+    }
+  }
+  throw last;
+}
 // Streams the answer so data keeps flowing on slow answers, with a running timer on screen.
 async function streamGen(model, body, label){
   const t0 = performance.now(); let firstByte = null, text = '', finish = null, usage = null, chars = 0;
@@ -241,7 +266,7 @@ ${transcript}`;
 
 $('run').onclick = async () => {
   const mime = MIME[(file.name.split('.').pop() || '').toLowerCase()], model = $('model').value;
-  $('run').disabled = true; running = true; keepAwake(true); $('log').textContent = ''; Object.assign(report, { started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
+  $('run').disabled = true; running = true; keepAwake(true); $('log').textContent = ''; activeModel = null; Object.assign(report, { answeredBy: [], started: new Date().toISOString(), model, steps: [], errors: [], usage: [], segments: [], analysis: null, durationSec: Math.round(duration) });
   segs = []; ['out', 'sum', 'ctx', 'learn'].forEach(id => $(id).hidden = true);
   let fo = null, part;
   try {
@@ -255,13 +280,13 @@ $('run').onclick = async () => {
       const from = mmss(i * step), to = mmss(Math.min(total, (i + 1) * step) + (i === parts - 1 ? 5 : 0));
       status(`<span class="pill warn">Transcribing ${from}–${to}${parts > 1 ? ` (part ${i + 1} of ${parts})` : ''}…</span>`);
       const speakers = [...new Map(segs.map(s => [s.speaker, `${s.speaker}${s.role && s.role !== 'unknown' ? ' (' + s.role + ')' : ''}`])).values()];
-      const j = await gen(model, [part, { text: segPrompt(from, to, speakers) }], SEG_SCHEMA, `part ${i + 1}`);
+      const j = await genAny([part, { text: segPrompt(from, to, speakers) }], SEG_SCHEMA, `part ${i + 1}`);
       const got = (j.segments || []).filter(s => s && (s.ar || s.en)); segs = segs.concat(got); log(`part ${i + 1}: ${got.length} segments`); render();
     }
     report.segments = segs;
     status('<span class="pill warn">Writing summary, context and phrases…</span>');
     const tr = segs.map(s => `${s.start} | ${s.speaker}${s.role ? ' (' + s.role + ')' : ''} | ${s.ar} | ${s.en}`).join('\n');
-    const an = await gen(model, [{ text: anPrompt(tr) }], AN_SCHEMA, 'analysis'); report.analysis = an; renderAnalysis(an);
+    const an = await genAny([{ text: anPrompt(tr) }], AN_SCHEMA, 'analysis'); report.analysis = an; renderAnalysis(an);
     status(`<span class="pill">Done</span> <span class="sm">${segs.length} segments, ${new Set(segs.map(s => s.speaker)).size} speakers.</span>`);
   } catch (e){ fail('run', e); status(`<span class="pill bad">Stopped</span> <span class="sm">${esc(e.message)}</span>`); }
   finally {
