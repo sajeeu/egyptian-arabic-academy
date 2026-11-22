@@ -21,7 +21,7 @@ var TR_ON = (function(){
     return localStorage.getItem('eaa_translator') === '1';
   } catch { return false; }
 })();
-var TR_VERSION = 'translator-test v4';
+var TR_VERSION = 'translator-test v5';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -553,7 +553,7 @@ function trTwoTap(btn, armedText, fn){
 }
 
 /* Results: conversation (Arabic, English, side by side), summary, explanations, phrases to learn */
-var trTab = 'conv', trLang = 'both', trLastRes = null;
+var trTab = 'conv', trLastRes = null;
 async function trResult(rec){
   const blob = await trGetAudio(rec.id).catch(() => null);
   if (trViewing !== rec.id) return;
@@ -613,11 +613,9 @@ function trPane(rec){
   const p = document.getElementById('trPane'); if (!p) return;
   const ai = `<p class="tr-ai">${trI('alert', 'sm')}Written by AI from the transcript. Tap a time to hear that part.</p>`;
   if (trTab === 'conv'){
-    p.innerHTML = `<div class="tr-lang" role="group" aria-label="Show">${[['both', 'Side by side'], ['ar', 'Arabic'], ['en', 'English']].map(([k, t]) => `<button data-l="${k}" aria-pressed="${trLang === k}">${t}</button>`).join('')}</div>
-      <div class="tr-segs ${trLang}">${rec.segments.length ? rec.segments.map((s, i) => `<button class="tr-seg" data-i="${i}">
+    p.innerHTML = `<div class="tr-segs both">${rec.segments.length ? rec.segments.map((s, i) => `<button class="tr-seg" data-i="${i}">
         <span class="tr-seg-top"><b>${trEsc(s.start)}</b><span class="tr-spk">${trEsc(s.speaker)}${s.role && s.role !== 'unknown' ? ' · ' + trEsc(s.role) : ''}</span>${s.unclear ? '<span class="tag sand">unclear part</span>' : ''}${s.check ? '<span class="tag sand">check the audio</span>' : ''}</span>
         <span class="tr-ar" lang="ar" dir="rtl">${trEsc(s.ar)}</span><span class="tr-en">${trEsc(s.en)}</span></button>`).join('') : '<p class="muted">No speech was found in this recording.</p>'}</div>`;
-    p.querySelectorAll('.tr-lang button').forEach(b => b.onclick = () => { trLang = b.dataset.l; trPane(rec); });
     p.querySelectorAll('.tr-seg').forEach(b => b.onclick = () => { const s = rec.segments[+b.dataset.i]; trPlay(trSecs(s.start), trSecs(s.end), b); });
   } else if (trTab === 'sum'){
     const s = rec.summary || {};
