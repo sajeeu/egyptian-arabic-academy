@@ -13,15 +13,18 @@
 <meta name="apple-mobile-web-app-title" content="Arabic Academy">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-<link rel="stylesheet" href="m9.css?v=20261124d">
-<link rel="stylesheet" href="translator.css?v=20261124d">
+<!-- Fonts load alongside the page instead of holding it up: on a slow connection the text shows at once in the phone's
+     own font, then switches when these arrive. -->
+<link rel="preload" as="style" id="fontcss" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;700&family=Noto+Naskh+Arabic:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"></noscript>
+<link rel="stylesheet" href="m9.css?v=20261124e">
+<link rel="stylesheet" href="translator.css?v=20261124e">
 <style>
 /* Layout: one calm column; green marks the way forward, sand marks Arabic detail. */
 :root{
   --bg:#F3F6F2; --surface:#ffffff; --sunk:#EEF2EE; --ink:#10231A; --muted:#5E6F66; --ink-2:#46584E; --line:#DCE4DD; --line-2:#C6D2C9;
   --green:#166B3F; --green-hi:#125A36; --on-green:#ffffff; --pale:#E4F1E8; --pale-ink:#125A36; --deep:#0F3D2A; --on-deep:#F1F7F2; --deep-soft:#A9CDB8;
-  --sand:#9A4A07; --sand-pale:#FCEFD9; --amber:#D17A12; --danger:#b42318; --danger-pale:#fdecea;
+  --sand:#9A4A07; --sand-pale:#FCEFD9; --amber:#E08A1E; --danger:#b42318; --danger-pale:#fdecea;
   --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   --font-ar:"Cairo","Segoe UI","Noto Naskh Arabic","Geeza Pro",sans-serif;
   --r-lg:20px; --r:14px; --shadow:0 1px 2px rgba(20,40,30,.05),0 6px 20px rgba(20,40,30,.06);
@@ -29,7 +32,7 @@
 @media (prefers-color-scheme: dark){
   :root{ --bg:#0f1512; --surface:#18201b; --sunk:#131a16; --ink:#e8efe9; --muted:#9aa89f; --ink-2:#b7c4bb; --line:#27322b; --line-2:#36443b;
     --green:#2aa765; --green-hi:#35b872; --on-green:#06140c; --pale:#183324; --pale-ink:#8fe2b2; --deep:#0b2a1d; --on-deep:#eef6f0; --deep-soft:#8fbfa3;
-    --sand:#e2a85a; --sand-pale:#2c2416; --amber:#e2a85a; --danger:#f08a80; --danger-pale:#3a1d1a;
+    --sand:#e2a85a; --sand-pale:#2c2416; --amber:#E39A35; --danger:#f08a80; --danger-pale:#3a1d1a;
     --shadow:0 1px 2px rgba(0,0,0,.3); color-scheme:dark; }
 }
 *{box-sizing:border-box}
@@ -78,16 +81,6 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .btn.danger{background:var(--surface);border-color:var(--line);color:var(--danger)}
 .btn.block{width:100%} .btn.lg{padding:15px 20px;font-size:16px}
 .btn:disabled{opacity:.55;cursor:default}
-.iconbtn{flex-direction:column;gap:4px;padding:12px 10px;font-size:13px;min-width:92px}
-
-/* Progress */
-.bar{height:8px;background:var(--sunk);border-radius:99px;overflow:hidden}
-.bar>i{display:block;height:100%;background:var(--green);border-radius:99px}
-.bar.mini{width:64px;height:6px}
-.ring{flex:none}
-.ring circle{fill:none;stroke-width:6}
-.ring .bg{stroke:var(--sunk)} .ring .fg{stroke:var(--green);stroke-linecap:round;transform:rotate(-90deg);transform-origin:center}
-.ring text{font:700 13px var(--font);fill:var(--ink)}
 
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* Home (redesign): two columns on wide screens; the curriculum lesson is always first */
@@ -140,28 +133,6 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .sc-meta{font-size:13px;color:var(--muted);margin-top:2px}
 .sub .segs{margin-top:8px}
 .sc-next{font-size:14px;color:var(--ink-2)} .sc-next .ar{font-family:"Noto Naskh Arabic",var(--font-ar);font-weight:700;font-size:20px;color:var(--ink)}
-.btn.round{border-radius:99px;margin-top:18px}
-
-/* Lesson overview */
-.ov-title{font-size:30px;font-weight:800;line-height:1.15;letter-spacing:-.02em}
-.ov-card{border-radius:22px}
-.ov-h{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:700}
-.ov-h .ic{color:var(--muted)}
-.ov-scen{font-size:17px;margin:12px 0 0}
-.ov-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center;border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
-.ov-stats b{display:block;font-size:26px;font-weight:800;line-height:1.3} .ov-stats b.ov-st{font-size:19px;padding-top:4px}
-.ov-stats span{color:var(--muted);font-size:14px}
-.ov-sub{color:var(--muted);margin:0 2px;font-size:15px}
-.ov-text{margin:0 2px;font-size:17px}
-.ov-list{padding:4px 18px;border-radius:22px}
-.ov-ex{display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:18px 0;cursor:pointer}
-.ov-ex:first-child{border-top:0}
-.ov-n{width:32px;height:32px;border-radius:9px;background:var(--sunk);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--muted);flex:none;margin-top:4px}
-.ov-ar{display:block;font-family:var(--font-ar);font-weight:700;font-size:24px;line-height:1.5;text-align:left;unicode-bidi:plaintext}
-.ov-lat{display:block;font-weight:600;margin-top:4px}
-.ov-en{display:block;color:var(--muted)}
-.ov-ok{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--pale-ink);background:var(--pale);padding:3px 8px;border-radius:99px;flex:none;margin-top:6px}
-.btn.round-sm{border-radius:99px;padding:8px 14px}
 
 /* Modules (redesign) */
 .mod-intro{margin:6px 0 0;max-width:62ch;font-size:14px;line-height:1.55;color:var(--ink-2);text-wrap:pretty}
@@ -201,7 +172,7 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .mod-count{display:block;font-size:13px;font-weight:500;line-height:1.4;color:var(--muted);font-variant-numeric:tabular-nums}
 .dots{display:flex;gap:4px;flex:none}
 .dot{width:14px;height:6px;border-radius:99px;background:var(--line)}
-.dot.p{background:#E08A1E} .dot.c{background:var(--green)}
+.dot.p{background:var(--amber)} .dot.c{background:var(--green)}
 .mod .chev-box{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:10px;color:var(--muted)}
 .mod summary:hover .chev-box{background:var(--sunk);color:var(--ink)}
 .mod .chev{transition:transform .3s cubic-bezier(.2,.7,.2,1)}
@@ -222,12 +193,10 @@ h1,h2,h3{margin:0;letter-spacing:-.015em;text-wrap:balance}
 .mnone .ico{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:var(--sunk);color:var(--ink-2)}
 summary{cursor:pointer;padding:14px 0;display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none;font-weight:700}
 summary::-webkit-details-marker{display:none}
-.mod-meta{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .chev{transition:transform .2s} details[open] .chev{transform:rotate(180deg)}
 .lesson-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;border-radius:12px;padding:9px 8px;cursor:pointer}
 .lesson-row:hover{background:var(--sunk)}
-.lesson-row .ln{font-size:12px;font-weight:700;color:var(--muted);width:30px;font-variant-numeric:tabular-nums}
-.st-done{color:var(--green)} .st-prog{color:var(--sand)} .st-none{color:var(--line)}
+.st-done{color:var(--green)}
 details .list{padding:0 0 10px}
 
 /* Lesson */
@@ -386,12 +355,12 @@ details .list{padding:0 0 10px}
 .ov-main small{font-size:15px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
 .ov-bar{display:flex;gap:3px;height:8px;border-radius:99px;background:var(--sunk);overflow:hidden}
 .ov-bar i{display:block;height:100%;border-radius:99px;flex:none}
-.ov-bar .c{background:var(--green)} .ov-bar .p{background:#E08A1E}
+.ov-bar .c{background:var(--green)} .ov-bar .p{background:var(--amber)}
 .ov-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:14px;border-top:1px solid var(--line)}
 .ov-it{min-width:0}
 .ov-it b{display:block;font-size:22px;font-weight:800;letter-spacing:-.02em;line-height:1.15;font-variant-numeric:tabular-nums}
 .ov-it span{display:flex;align-items:center;gap:6px;margin-top:2px;font-size:13px;font-weight:600;line-height:1.3;color:var(--ink-2);white-space:nowrap}
-.ov-it span i{flex:none;width:8px;height:8px;border-radius:99px;background:#E08A1E}
+.ov-it span i{flex:none;width:8px;height:8px;border-radius:99px;background:var(--amber)}
 .ov-it span .ic{width:14px;height:14px;stroke-width:3;color:var(--green)}
 .ov-row .ov-it+.ov-it{padding-left:12px;border-left:1px solid var(--line)}
 .ov-it span i.n{background:var(--line-2)}   /* "Not started" marker on Settings: the empty part of the bar */
@@ -423,7 +392,7 @@ details .list{padding:0 0 10px}
 .mrow-c{display:inline-flex;gap:8px;font-size:13px;font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums}
 .mrow-p{color:var(--sand)}
 .bar8{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
-.bar8 span{height:6px;border-radius:99px;background:var(--line)} .bar8 .p{background:#E08A1E} .bar8 .c{background:var(--green)}
+.bar8 span{height:6px;border-radius:99px;background:var(--line)} .bar8 .p{background:var(--amber)} .bar8 .c{background:var(--green)}
 .pfoot{display:flex;align-items:flex-start;gap:8px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted)}
 .pfoot .ic{margin-top:2px} .pfoot p{margin:0;font-size:13px;line-height:1.5}
 .pgw .btn{min-height:44px;padding:0 16px;font-size:14px;border-radius:14px}
@@ -457,8 +426,8 @@ details .list{padding:0 0 10px}
 .bk-row{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;padding:14px 14px 14px 16px}
 .bk-row>div{flex:1 1 168px;min-width:0;display:flex;flex-direction:column;gap:2px}
 .bk-row>div b{font-size:14px;font-variant-numeric:tabular-nums} .bk-row>div span{font-size:13px;font-weight:500;color:var(--muted)} .bk-tr{font-style:normal}
-#stateMsg .note,#stateMsg .warn,#bkMsg .note,#bkMsg .warn{margin-top:0}
-#stateMsg:empty,#bkMsg:empty{display:none}
+#stateMsg .note,#stateMsg .warn,#bkMsg .note,#bkMsg .warn,#keyMsg .note,#keyMsg .warn{margin-top:0}
+#stateMsg:empty,#bkMsg:empty,#keyMsg:empty{display:none}
 
 /* Confirmation pop-up */
 dialog.modal{border:0;padding:0;border-radius:22px;background:var(--surface);color:var(--ink);width:min(420px,calc(100% - 32px));box-shadow:0 24px 60px -12px rgba(16,35,26,.45)}
@@ -562,7 +531,6 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
   .dots{display:none}
   .foot{padding-bottom:calc(92px + env(safe-area-inset-bottom))}   /* clears the bottom tab bar */
   .toast{bottom:calc(84px + env(safe-area-inset-bottom))}
-  .iconbtn{min-width:0;flex:1}
 }
 @media (prefers-reduced-motion: reduce){ *{transition:none !important;animation:none !important} }
 </style>
@@ -570,7 +538,7 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <body>
 <header class="top">
   <div class="top-in">
-    <button class="brand" onclick="show('dashboard')" aria-label="Go to dashboard">
+    <button class="brand" onclick="show('dashboard')" aria-label="Go to Home">
       <span class="logo" id="logoMark"></span>
       <span>Egyptian Arabic Academy<small>Hospital Arabic, one phrase at a time</small></span>
     </button>
@@ -590,19 +558,19 @@ dialog.modal[open]::backdrop{animation:eaa-fade .24s ease-out}
 <div class="toast" id="toast" role="status" hidden></div>
 
 <!-- ?v= is the release stamp: change it (here and on m9.css) whenever any of these files change, so phones fetch the new copy instead of a saved one. -->
-<script src="curriculum.js?v=20261124d"></script>
+<script src="curriculum.js?v=20261124e"></script>
 <!-- Module 09 (Pediatrics): lesson data, then its pages. The app still runs as Modules 01-08 if these fail to load. -->
-<script src="module9.js?v=20261124d"></script>
-<script src="m9.js?v=20261124d"></script>
+<script src="module9.js?v=20261124e"></script>
+<script src="m9.js?v=20261124e"></script>
 <!-- Conversation Translator (its own tab). The app runs as before if it fails to load. Its recordings are kept in their own
      storage (never the lesson progress) and are included in Settings > Daily backup and the backup file. -->
 <script>var TR_IN_APP = true;</script>
-<script src="translator.js?v=20261124d"></script>
+<script src="translator.js?v=20261124e"></script>
 <script>
 /* ---------- State ---------- */
 const KEY = 'egyptian_academy_v92';
-const HAS_M9 = typeof M9_VIEWS !== 'undefined' && !!M9_VIEWS;
-const HAS_TR = typeof TR_VIEWS !== 'undefined' && !!TR_VIEWS;   // the Conversation Translator is loaded (translator.js)   // Module 09 is loaded (m9.js added its lessons to CURRICULUM)
+const HAS_M9 = typeof M9_VIEWS !== 'undefined' && !!M9_VIEWS;   // Module 09 is loaded (m9.js added its lessons to CURRICULUM)
+const HAS_TR = typeof TR_VIEWS !== 'undefined' && !!TR_VIEWS;   // the Conversation Translator is loaded (translator.js)
 const byId = Object.fromEntries(CURRICULUM.map(l => [l.id, l]));
 // Totals come from the curriculum, so adding a module later needs no other change.
 const MODULES = [...new Set(CURRICULUM.map(l => l.module))].sort((a, b) => a - b);
@@ -614,7 +582,6 @@ const label = id => id.replace('_', ' ');        // "M01_L01" -> "M01 L01"
 // iPhone or iPad (iPadOS reports itself as a Mac with a touch screen). Their Home Screen app keeps its own storage.
 const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 let installPrompt = null;                         // Chrome's install prompt, when it offers one
-const modTitle = ['', '', '', '', '', '', '', '', '']; // curriculum defines no module names, so none are shown
 
 function freshState(){ return { completed: [], lessons: {}, verified_spoken_passes: 0, mode: 'simplified_learner_confirmed' }; }
 let S = load();
@@ -789,7 +756,7 @@ async function speak(text, rate = 0.85, msg){
   if (!('speechSynthesis' in window) || !arVoice){
     // Many phones and browsers have no Arabic voice: use Google's voice instead (same free key as the tutor).
     if (localStorage.getItem('gemini_key')) return geminiSay(text, rate < 0.7, say);
-    return say('This browser has no Arabic voice. To hear the phrases, add your free Google key in <b>Settings → Tutor setup</b>; Listen will then use Google\'s voice.');
+    return say('This browser has no Arabic voice. To hear the phrases, add your free Google key in <b>Settings → Google key</b>; Listen will then use Google\'s voice.');
   }
   if (speechSynthesis.speaking || speechSynthesis.pending){ speechSynthesis.cancel(); await new Promise(r => setTimeout(r, 80)); }
   speechSynthesis.resume();                                   // un-sticks a paused speech queue
@@ -930,7 +897,7 @@ function geminiSay(text, slow, say){
     }
     if (sc.turnComplete){ if (job.chunks.length) sayCache.set(id, job.chunks); ws.onclose = null; ws.close(); doneAfterPlayback(); }
   };
-  ws.onclose = e => { if (sayJob === job && !job.chunks.length){ say(`Google's voice couldn't play${e.reason ? ` (${esc(e.reason)})` : ''}. Check your Google key in Settings → Tutor setup.`); job.stop(); } };
+  ws.onclose = e => { if (sayJob === job && !job.chunks.length){ say(`Google's voice couldn't play${e.reason ? ` (${esc(e.reason)})` : ''}. Check your Google key in Settings → Google key.`); job.stop(); } };
 }
 
 async function startTutor(L, ex, prompt){
@@ -974,7 +941,7 @@ async function startTutor(L, ex, prompt){
   ws.onerror = () => {};
   ws.onclose = e => {
     if (tutor !== t) return;
-    const why = e.reason ? esc(e.reason) : (t.ready ? 'The conversation ended.' : 'Could not connect. Check your Google key in Settings → Tutor setup.');
+    const why = e.reason ? esc(e.reason) : (t.ready ? 'The conversation ended.' : 'Could not connect. Check your Google key in Settings → Google key.');
     setStatus(`${t.ready ? '' : '<span style="color:var(--danger)">'}${why}${t.ready ? '' : '</span>'} Tap "Start talking" to begin again.`);
     stopTutor(); endTutorUI(true);
   };
@@ -1065,17 +1032,14 @@ function toast(text){
 
 /* ---------- Rendering ---------- */
 const $app = document.getElementById('app');
+// The top bar's height (--top-h), so things that stick under it (the Translator's audio player) sit right below it,
+// even when the phone uses larger text and the bar grows.
+try { const topBar = document.querySelector('.top'), setTopH = () => document.documentElement.style.setProperty('--top-h', topBar.offsetHeight + 'px');
+  setTopH(); new ResizeObserver(setTopH).observe(topBar); addEventListener('resize', setTopH); } catch {}
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const statusIcon = id => ({ complete: ic('checkCircle', 'st-done'), in_progress: ic('half', 'st-prog'), not_started: ic('circle', 'st-none') }[status(id)]);
-const pill = id => ({ complete: '<span class="tag green">Complete</span>',
-  in_progress: `<span class="tag sand">${S.lessons[id]?.confirmed.length}/${byId[id].ex.length}</span>`, not_started: '' }[status(id)]);
-const ring = (done, total, size = 64) => { const r = size / 2 - 5, c = 2 * Math.PI * r;
-  return `<svg class="ring" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-label="${done} of ${total} phrases confirmed">
-    <circle class="bg" cx="${size/2}" cy="${size/2}" r="${r}"/><circle class="fg" cx="${size/2}" cy="${size/2}" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - done / total)}"/>
-    <text x="50%" y="50%" dominant-baseline="central" text-anchor="middle">${done}/${total}</text></svg>`; };
 
 function show(view, id, opts = {}){
-  stopTutor(); if ('speechSynthesis' in window) speechSynthesis.cancel();
+  stopTutor(); if ('speechSynthesis' in window) speechSynthesis.cancel(); sayJob?.stop();   // no sound carries on into the next page (the phone's voice or Google's)
   document.getElementById('m9sheet')?.remove();                 // Module 09's first-open note never stays over another page
   document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === view || (view.startsWith('tr') && b.dataset.v === 'tr') || ((view === 'lesson' || view === 'overview' || view.startsWith('m9')) && b.dataset.v === 'dashboard')));
   $app.classList.toggle('wide', view === 'dashboard');          // Home uses the wide two-column layout
@@ -1085,8 +1049,10 @@ function show(view, id, opts = {}){
   document.querySelector('.foot').classList.toggle('off', view !== 'progress');   // "Powered by" only on the Settings tab
   // Next card of the same lesson, in the one-column layout: open at the "Phrase x of y" line, so the phrase and the
   // Complete buttons are on screen without scrolling. Everything else opens at the top.
+  // Settings opened to add the key (from the tutor, Module 09 or the Translator): open at the Google key card.
   const lp = view === 'lesson' && lastPage === view + '|' + (id || '') && !matchMedia('(min-width:1000px)').matches && $app.querySelector('.lprog');
-  window.scrollTo(0, lp ? Math.max(0, lp.getBoundingClientRect().top + scrollY - document.querySelector('.top').offsetHeight - 12) : 0);
+  const kc = view === 'progress' && opts.askKey && document.getElementById('keycard'), at = lp || kc;
+  window.scrollTo(0, at ? Math.max(0, at.getBoundingClientRect().top + scrollY - document.querySelector('.top').offsetHeight - 12) : 0);
   animatePage(view, id);
 }
 
@@ -1135,7 +1101,7 @@ function dashboard(){
       </div>
       <div class="pp"><span class="pp-k">Next phrase</span>
         <div><p class="pp-ar" lang="ar" dir="rtl" style="font-size:${pp.ex.ar.length > 18 ? 34 : 46}px">${esc(pp.ex.ar)}</p><p class="pp-en">${esc(pp.ex.en)}</p></div></div>
-      <div class="hero-cta"><button class="btn primary block lg" onclick="startLesson('${p.id}');show('lesson','${p.id}')">${ic('playCircle')}${ps === 'in_progress' ? 'Resume Curriculum Lesson' : 'Start Curriculum Lesson'}</button></div>
+      <div class="hero-cta"><button class="btn primary block lg" onclick="startLesson('${p.id}');show('lesson','${p.id}')">${ic('playCircle')}${ps === 'in_progress' ? 'Resume curriculum lesson' : 'Start curriculum lesson'}</button></div>
     </div></article>`;
   if (HAS_M9) a += m9HomeCard();                                           // "Next in Pediatrics", straight under the curriculum lesson
   const o = others().filter(l => !(S.dismissed || []).includes(l.id));    // cards she removed from Home stay hidden
@@ -1147,7 +1113,7 @@ function dashboard(){
           <div class="sc-meta">${esc(MODULE_NAMES[l.module])}${c ? ` · ${esc(c)}` : ''}</div></div>
         <div><div class="lc-prog"><span>Phrase ${lp.idx} of ${l.ex.length}</span>${lp.conf}</div>${lp.segs}</div>
         <div class="sc-next">Next: <span class="ar" lang="ar" dir="rtl">${esc(lp.ex.ar)}</span></div>
-        <button class="btn pale block lg" onclick="show('lesson','${l.id}')">${ic('playCircle')}Resume Lesson</button>
+        <button class="btn pale block lg" onclick="show('lesson','${l.id}')">${ic('playCircle')}Resume lesson</button>
       </article>`; }).join('');
   }
   // The progress totals live on Settings only.
@@ -1244,7 +1210,7 @@ function dashboard(){
 function lessonHeader(L, extra = ''){
   const scen = L.scenario.replace(/\s*\(context: [^)]*\)\s*$/, ''), ctx = (L.scenario.match(/\(context: ([^)]*)\)\s*$/) || [])[1];
   return `<div class="backrow">
-      <button class="btn ghost back" onclick="show('dashboard')">${ic('left', 'sm')}Back to Dashboard</button>
+      <button class="btn ghost back" onclick="show('dashboard')">${ic('left', 'sm')}Home</button>
       <span class="code-pill">${label(L.id).replace(' ', ' · ')}</span>
     </div>
     <div class="lhead">
@@ -1260,24 +1226,24 @@ const ORDINAL = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'sevent
 function overview(id){
   if (HAS_M9 && byId[id].module === 9) return m9Preview(id);   // conversation lessons have their own preview (m9.js)
   const L = byId[id], st = status(id), s = S.lessons[id], p = primary(), code = label(id);
-  const stLabel = { not_started: 'Not Started', in_progress: 'In Progress', complete: 'Complete' }[st];
+  const stLabel = { not_started: 'Not started', in_progress: 'In progress', complete: 'Complete' }[st];
   const n = L.ex.length;
   const conf = s ? s.confirmed : [], cur = st === 'in_progress' ? s.idx : 0;
   const segs = `<div class="segs" role="img" aria-label="${conf.length} of ${n} phrases confirmed.${cur ? ` You are on phrase ${cur}.` : ''}" style="grid-template-columns:repeat(${n},minmax(0,1fr))">` +
     L.ex.map(e => `<span class="seg${conf.includes(e.n) ? ' done' : e.n === cur ? ' now' : ''}"></span>`).join('') + `</div>`;
-  const back = `<button class="btn ghost block back" onclick="show('dashboard')">${ic('left', 'sm')}Back to Dashboard</button>`;
+  const back = `<button class="btn ghost block back" onclick="show('dashboard')">${ic('left', 'sm')}Back to Home</button>`;
   let next;
   if (st === 'not_started'){
     const ip = CURRICULUM.filter(l => status(l.id) === 'in_progress').length + 1;
     const role = p === L ? `<b>${code} is your primary curriculum lesson.</b>`
       : `It becomes your ${ORDINAL[ip - 1] || 'number ' + ip} in-progress lesson. <b>${label(p.id)} stays the primary curriculum lesson.</b>`;
     next = `<div class="pv-ch"><h2 id="cont-h">Start this lesson</h2>
-      <p><b>Start Lesson</b> begins ${code} at phrase 1 of ${n}, with nothing confirmed yet. ${role}</p></div>
-      <div class="pv-btns"><button class="btn primary block go-btn" id="ovGo" onclick="startLesson('${id}');show('lesson','${id}')">${ic('playCircle')}Start Lesson</button>${back}</div>`;
+      <p><b>Start lesson</b> begins ${code} at phrase 1 of ${n}, with nothing confirmed yet. ${role}</p></div>
+      <div class="pv-btns"><button class="btn primary block go-btn" id="ovGo" onclick="startLesson('${id}');show('lesson','${id}')">${ic('playCircle')}Start lesson</button>${back}</div>`;
   } else if (st === 'in_progress'){
     next = `<div class="pv-ch"><h2 id="cont-h">Continue this lesson</h2>${segs}
       <p>You're on phrase ${s.idx} of ${n}, with ${s.confirmed.length} confirmed. ${p === L ? `<b>This is your primary curriculum lesson.</b>` : `<b>${label(p.id)} stays the primary curriculum lesson.</b>`}</p></div>
-      <div class="pv-btns"><button class="btn ${p === L ? 'primary' : 'pale'} block go-btn" id="ovGo" onclick="show('lesson','${id}')">${ic('playCircle')}${p === L ? 'Resume Curriculum Lesson' : 'Resume Lesson'}</button>${back}</div>`;
+      <div class="pv-btns"><button class="btn ${p === L ? 'primary' : 'pale'} block go-btn" id="ovGo" onclick="show('lesson','${id}')">${ic('playCircle')}${p === L ? 'Resume curriculum lesson' : 'Resume lesson'}</button>${back}</div>`;
   } else {
     next = `<div class="pv-ch"><h2 id="cont-h">Lesson complete</h2>${segs}<p>You confirmed all ${n} phrases. Tap any phrase to hear it again.</p>
       <p class="restart-why">${restartInfo(id, 'phrase')}</p></div>
@@ -1287,8 +1253,8 @@ function overview(id){
   $app.classList.add('wide');
   $app.innerHTML = `<div class="pvw">
     <div class="lintro">
-      <div class="backrow"><button class="btn ghost back" onclick="show('dashboard')">${ic('left', 'sm')}Back</button><span class="code-pill">${code.replace(' ', ' · ')}</span></div>
-      <div class="lhead"><h1 class="ltitle ov-title">${esc(L.title)}</h1><p class="pv-mod">Module ${String(L.module).padStart(2, '0')} · ${esc(MODULE_NAMES[L.module])}</p></div>
+      <div class="backrow"><button class="btn ghost back" onclick="show('dashboard')">${ic('left', 'sm')}Home</button><span class="code-pill">${code.replace(' ', ' · ')}</span></div>
+      <div class="lhead"><h1 class="ltitle">${esc(L.title)}</h1><p class="pv-mod">Module ${String(L.module).padStart(2, '0')} · ${esc(MODULE_NAMES[L.module])}</p></div>
     </div>
     <div class="pv">
       <section class="card pv-scn" aria-labelledby="scn-h">
@@ -1403,11 +1369,11 @@ function lesson(id, opts){
         <div class="actions">
           ${done ? `<div class="pdone">${ic('checkCircle', 'sm')}<span>You confirmed this phrase</span></div>
           <button class="btn primary block go" id="toCur">Continue at phrase ${s.idx}${ic('right')}</button>`
-          : block ? `<button class="btn primary block go" id="ok" disabled aria-describedby="whyBlock">Complete & Next Lesson${ic('check')}</button>
+          : block ? `<button class="btn primary block go" id="ok" disabled aria-describedby="whyBlock">Complete & next lesson${ic('check')}</button>
           <div class="lblock" id="whyBlock">${ic('info', 'sm')}<span>${block.why}</span></div>
           <button class="btn pale block" id="toOpen">${ic('left', 'sm')}Go to phrase ${block.first}</button>`
-          : `<button class="btn primary block go" id="ok">${last ? 'Complete & Next Lesson' : 'Complete & Next Card'}${ic(last ? 'check' : 'right')}</button>
-          <button class="btn ghost block again" id="again">${ic('retry', 'sm')}Not Complete — Practice Again</button>
+          : `<button class="btn primary block go" id="ok">${last ? 'Complete & next lesson' : 'Complete & next card'}${ic(last ? 'check' : 'right')}</button>
+          <button class="btn ghost block again" id="again">${ic('retry', 'sm')}Not complete — practise again</button>
           <div id="againMsg"></div>
           <div class="hint">${ic('info', 'sm')}<span>Tap Complete when <i>you</i> feel ready. It's your own confirmation, not a pronunciation score.</span></div>`}
           ${resetBtn(id, 'phrase')}
@@ -1443,9 +1409,9 @@ function lesson(id, opts){
 }
 
 function search(){
-  $app.innerHTML = `<h1 class="title">Search phrases</h1>
+  $app.innerHTML = `<h1 class="ltitle">Search phrases</h1>
     <div class="card">
-      <div class="searchbox">${ic('search')}<input type="text" id="q" placeholder="Search Arabic, pronunciation or English…" autofocus>
+      <div class="searchbox">${ic('search')}<input type="text" id="q" placeholder="Search all phrases…" aria-label="Search phrases in Arabic, pronunciation or English" autofocus>
         <button type="button" class="mclear sclear" id="qclear" aria-label="Clear search" hidden>${ic('xmark')}</button></div>
       <div id="res" class="small muted" style="margin-top:12px"></div>
     </div>`;
@@ -1455,7 +1421,7 @@ function search(){
   const COMMON = { 'Everyday': ['hello', 'good morning', 'how are you', 'thank you', 'please', 'sorry', 'where is', 'how much', 'today', 'wait', 'understand', 'repeat', 'slowly'],
     'At the hospital': ['doctor', 'nurse', 'patient', 'pain', 'medicine', 'blood', 'pressure', 'temperature', 'fever', 'test', 'results', 'head', 'stomach', 'x-ray', 'emergency'],
     ...(HAS_M9 ? { 'Pediatrics': ['baby', 'child', 'my son', 'daughter', 'feeding', 'diaper', 'weight', 'vaccine', 'cough', 'vomiting', 'diarrhea', 'rash', 'asthma', 'inhaler', 'seizure'] } : {}) };
-  const chips = () => `<p class="chips-intro">Type to search all ${N_PHRASES} phrases, or tap a common word:</p>` +
+  const chips = () => `<p class="chips-intro">Type Arabic, pronunciation or English to search all ${N_PHRASES} phrases, or tap a common word:</p>` +
     Object.entries(COMMON).map(([g, ws]) => `<div class="chip-group"><b>${g}</b><div class="chips">${ws.map(w => `<button type="button" class="chip" data-w="${esc(w)}">${esc(w)}</button>`).join('')}</div></div>`).join('');
   let hits = [];
   res.innerHTML = chips();
@@ -1486,6 +1452,17 @@ function search(){
   };
 }
 
+/* Ask Google whether a key works: a list of models (it uses none of the free limit). Returns { ok } when it works,
+   { bad, why } when Google refuses the key, and {} when it can't be checked right now (offline, or Google busy). */
+async function checkKey(k){
+  try {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1', { headers: { 'x-goog-api-key': k } });   // the key goes in a header, never in a URL
+    if (r.ok) return { ok: true };
+    if (![400, 401, 403].includes(r.status)) return {};
+    let why = ''; try { why = String((await r.json())?.error?.message || '').replace(/\s+/g, ' ').slice(0, 120); } catch {}
+    return { bad: true, why };
+  } catch { return {}; }
+}
 // Settings cards that fold away (closed to start). Which ones are open is kept while the app is open.
 const FOLD = {};
 const foldHead = (id, icon, title, sub) => `<summary><span class="tutor-ico green">${ic(icon)}</span>
@@ -1503,7 +1480,7 @@ function progress(_, opts){
         ${HAS_M9 && m === 9 ? m9SettingsBar(c, p) : `<div class="bar8" role="img" aria-label="${c} of ${ls.length} lessons complete${p ? `, ${p} in progress` : ''}">${ls.map(l => `<span class="${isDone(l.id) ? 'c' : status(l.id) === 'in_progress' ? 'p' : ''}"></span>`).join('')}</div>`}</div></div>`; }).join('');
   $app.classList.add('wide');
   $app.innerHTML = `<div class="pgw">
-    <h1 class="ltitle">Progress &amp; settings</h1>
+    <h1 class="ltitle">Settings</h1>
     <div class="pg"><div class="pg-col">
       <section class="card ov o1" aria-label="Lesson totals">
         <div class="ov-top"><span class="ov-k">Lessons</span><span class="ov-pct">${Math.round(d * 100 / N_LESSONS)}%</span></div>
@@ -1536,13 +1513,14 @@ function progress(_, opts){
     <div class="pg-col">
       <section class="card pcard o3" id="keycard" aria-labelledby="tutor-h">
         <div class="tutor-head"><span class="tutor-ico">${ic('key')}</span>
-          <div class="grow"><div class="between wrap-row"><h2 id="tutor-h">Tutor setup</h2>${hasKey ? `<span class="chip-ok">${ic('check')}Key saved</span>` : `<span class="tag">No key yet</span>`}</div>
-            <p class="pdesc">The tutor is a live voice conversation powered by Google Gemini Live. It needs a free Google AI Studio API key, saved only in this browser. Google's free tier has usage limits. If this browser has no Arabic voice, Listen and Slowly also use this key to play Google's voice.</p></div></div>
-        ${opts?.askKey ? note('info', 'Add your Google API key to start talking with the tutor. Everything else in the app works without it.') : ''}
+          <div class="grow"><div class="between wrap-row"><h2 id="tutor-h">Google key</h2>${hasKey ? `<span class="chip-ok">${ic('check')}Key saved</span>` : `<span class="tag">No key yet</span>`}</div>
+            <p class="pdesc">The voice tutor and the Translator use Google Gemini. They need a free Google AI Studio key, saved only in this browser. Google's free tier has usage limits. If this browser has no Arabic voice, Listen and Slowly also use this key to play Google's voice.</p></div></div>
+        ${opts?.askKey ? note('info', opts.askKey === 'tr' ? 'Add your Google key to translate recordings. Everything else in the app works without it.' : 'Add your Google key to start talking with the tutor. Everything else in the app works without it.') : ''}
         ${hasKey ? '' : `<div><a class="btn pale block" id="getKey" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">${ic('external', 'sm')}Get a free Google key</a>
           <p class="pdesc" style="margin-top:8px;text-align:center">Opens Google AI Studio in a new tab. Sign in, tap <b>Create API key</b>, copy it, then come back and paste it below.</p></div>`}
-        <div class="keyrow"><label class="sr" for="key">Google API key</label><input type="password" id="key" autocomplete="off" spellcheck="false" placeholder="${hasKey ? 'Enter a new key to replace the saved one' : 'Paste your Google API key'}">
+        <div class="keyrow"><label class="sr" for="key">Google key</label><input type="password" id="key" autocomplete="off" spellcheck="false" placeholder="${hasKey ? 'Enter a new key to replace the saved one' : 'Paste your Google key'}">
           <button class="btn primary" id="saveKey" disabled>${ic('check', 'sm')}Save</button></div>
+        <div id="keyMsg" role="status"></div>
       </section>
 
       <details class="card pfold o5" id="moveCard" aria-labelledby="move-h"${FOLD.moveCard ? ' open' : ''}>
@@ -1593,13 +1571,21 @@ function progress(_, opts){
   const bkMore = document.getElementById('bkMore');      // the fold's label follows its state
   if (bkMore) bkMore.addEventListener('toggle', () => { const s = bkMore.querySelector('summary span'), n = backups().length - 1;
     s.textContent = bkMore.open ? `Hide older ${n === 1 ? 'backup' : 'backups'}` : `Show ${n} older ${n === 1 ? 'backup' : 'backups'}`; });
-  const keyIn = document.getElementById('key');
-  keyIn.oninput = () => document.getElementById('saveKey').disabled = !keyIn.value.trim();
-  if (opts?.askKey) document.getElementById('keycard').scrollIntoView();
+  const keyIn = document.getElementById('key'), saveKey = document.getElementById('saveKey'), keyMsg = h => document.getElementById('keyMsg').innerHTML = h;
+  keyIn.oninput = () => { saveKey.disabled = !keyIn.value.trim(); keyMsg(''); };
+  keyIn.onkeydown = e => { if (e.key === 'Enter' && !saveKey.disabled) saveKey.click(); };
   const stateMsg = h => document.getElementById('stateMsg').innerHTML = h;
-  document.getElementById('saveKey').onclick = () => {
-    const v = document.getElementById('key').value.trim();
-    if (v){ localStorage.setItem('gemini_key', v); localStorage.removeItem('anthropic_key'); progress(); toast('Key saved. Open a lesson and tap "Start talking with tutor".'); }
+  // Save checks the key with Google first (this uses none of the free limit). A key Google refuses is not saved;
+  // if it can't be checked right now (no connection, Google busy), it is saved and checked the first time it is used.
+  saveKey.onclick = async () => {
+    const v = keyIn.value.trim(); if (!v) return;
+    saveKey.disabled = true; keyIn.disabled = true; saveKey.innerHTML = `${ic('clock', 'sm')}Checking…`; keyMsg('');
+    const res = await checkKey(v);
+    if (!document.getElementById('keycard')) return;                // she left Settings while it was checking
+    if (res.bad){ keyIn.disabled = false; saveKey.disabled = false; saveKey.innerHTML = `${ic('check', 'sm')}Save`;
+      return keyMsg(warn(`<b>Google didn't accept this key.</b> Check that you copied all of it, then try again.${res.why ? ` <span class="small">(Google said: ${esc(res.why)})</span>` : ''}${hasKey ? ' Your saved key hasn\'t changed.' : ''}`)); }
+    localStorage.setItem('gemini_key', v); localStorage.removeItem('anthropic_key'); progress();
+    toast(res.ok ? 'Key checked and saved. The tutor and the Translator are ready.' : 'Key saved. It couldn\'t be checked right now, so it will be checked the first time you use it.');
   };
   document.getElementById('copyState').onclick = e => {
     const b = e.currentTarget, ta = document.getElementById('state');
@@ -1696,6 +1682,10 @@ const NAV = { dashboard: ['home', 'Home'], search: ['search', 'Search'], tr: ['l
 document.querySelectorAll('#nav button').forEach(b => { const [i, t] = NAV[b.dataset.v]; b.innerHTML = `<span class="tab-ic">${ic(i)}</span><span>${t}</span>`; b.onclick = () => show(b.dataset.v); });
 show('dashboard');
 dailyBackup(); setInterval(dailyBackup, 60000);                     // catch up a missed 23:00, then check every minute
+/* Ask the browser to keep this app's data (progress, daily backups, Translator recordings) even when the phone runs short
+   of space; otherwise it may clear it. Chrome decides by itself without asking her (an installed app is normally kept). */
+function keepStorage(){ try { const s = navigator.storage; if (s?.persist) return s.persisted().then(p => p || s.persist()).catch(() => false); } catch {} return Promise.resolve(false); }
+keepStorage();
 document.addEventListener('visibilitychange', () => { if (!document.hidden) dailyBackup(); });
 
 /* Add to Home Screen: Android Chrome offers its own install prompt, which the Progress page can show. */
@@ -1726,7 +1716,7 @@ function renderAppBar(){
 }
 
 /* ---------- Microphone permission ----------
-   "Say it" and the voice tutor need the microphone. The app asks when it opens and shows a banner while it is off. */
+   "Say it" and the voice tutor need the microphone. A banner shows while it is off, with a button to turn it on. */
 let micState = 'prompt';   // granted | prompt | denied | nomic | unsupported
 function renderMicBar(){
   const bar = document.getElementById('micbar');
@@ -1764,15 +1754,18 @@ async function requestMic(){
     setMic(p && p.state === 'prompt' ? 'prompt' : 'denied');
   }
 }
-(async () => {
+// The app never asks for the microphone by itself when it opens (browsers often block a request that comes before any tap).
+// The browser asks the first time she taps "Say it" or starts the tutor; until then the banner offers to turn it on.
+async function initMic(){
   if (!navigator.mediaDevices?.getUserMedia) return setMic('unsupported');
   const p = await navigator.permissions?.query({ name: 'microphone' }).catch(() => null);
   if (p){
-    p.onchange = () => setMic(p.state);                          // follows changes made in the browser's site settings
+    p.onchange = () => setMic(p.state);                          // follows changes made in the browser's site settings (and her first "Allow")
     if (p.state !== 'prompt') return setMic(p.state);
   } else if (localStorage.getItem('mic_ok')) return setMic('granted');   // browsers without the Permissions API
-  renderMicBar(); requestMic();                                 // first visit: ask now
-})();
+  setMic('prompt');
+}
+initMic();
 </script>
 </body>
 </html>

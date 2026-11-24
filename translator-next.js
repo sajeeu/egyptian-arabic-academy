@@ -15,10 +15,11 @@
 var TR_ON = true;
 var TR_APP = typeof TR_IN_APP !== 'undefined' && !!TR_IN_APP;   // part of the app: its Settings backup covers recordings too
 try { localStorage.removeItem('eaa_translator'); } catch {}       // the old preview switch is no longer used
-var TR_VERSION = TR_APP ? 'translator v3 (app)' : 'translator-test v15';
+var TR_VERSION = TR_APP ? 'translator v4 (app)' : 'translator-test v16';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
+var TR_MAX_PARTS = Math.ceil(9.5 * 3600 / TR_STEP_SEC);   // 9½ hours at most (Gemini's limit for one recording)
 var TR_FIRST_DATA_MS = 120000, TR_ANSWER_MS = 300000;     // give up on a model that sends nothing for 2 minutes
 // Only the accurate models. The lighter "lite" models made real translation mistakes in testing, so they are never used:
 // when the accurate ones are used up for the day, translating pauses until they are back (a wrong translation is never shown).
@@ -43,7 +44,10 @@ var TR_ICONS = {
   check: '<path d="M20 6 9 17l-5-5"/>', chev: '<path d="m6 9 6 6 6-6"/>', left: '<path d="m15 18-6-6 6-6"/>', alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
   play: '<polygon points="6 3 20 12 6 21 6 3"/>', vol: '<path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.4 18.4a9 9 0 0 0 0-12.8"/>', bell: '<path d="M10.27 21a2 2 0 0 0 3.46 0"/><path d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33"/>',
 };
-var trI = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${TR_ICONS[n] || ''}</svg>`;
+// The app's own icon (index.html ICONS) wherever it has one, so the same thing looks the same in every tab. TR_ICONS keeps
+// the ones the app doesn't have (wave, bell), and stands in on the test page, which has no app icons.
+var TR_APP_IC = { upload: 'upload', clock: 'clock', trash: 'trash', check: 'check', chev: 'chev', left: 'left', alert: 'alert', play: 'play', vol: 'volume' };
+var trI = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${(typeof ICONS !== 'undefined' && ICONS[TR_APP_IC[n]]) || TR_ICONS[n] || ''}</svg>`;
 var trEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 var trKey = () => { try { return localStorage.getItem('gemini_key') || ''; } catch { return ''; } };
 var trMMSS = s => { s = Math.max(0, Math.round(s || 0)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
@@ -83,12 +87,13 @@ var trSlot = () => { const now = new Date(), due = new Date(now); if (now.getHou
 var trBackups = async () => (await trTx('backups', 'readonly', s => s.getAll()) || []).sort((a, b) => b.slot.localeCompare(a.slot));
 async function trDailyBackup(){
   try {
-    const slot = trSlot(), list = await trBackups();
-    if (list[0] && list[0].slot >= slot) return false;                 // already copied for that 23:00
+    // This runs every minute: read only the dates of the copies, not the copies themselves (they hold every transcript).
+    const slot = trSlot(), slots = ((await trTx('backups', 'readonly', s => s.getAllKeys())) || []).map(String).sort().reverse();
+    if (slots[0] && slots[0] >= slot) return false;                    // already copied for that 23:00
     const recs = (await trAll()).map(r => { const c = { ...r }; delete c.parts; return c; });
     if (!recs.length) return false;
     await trTx('backups', 'readwrite', st => st.put({ slot, at: Date.now(), recs }));
-    for (const old of list.slice(6)) await trTx('backups', 'readwrite', st => st.delete(old.slot));   // keep 7
+    for (const old of slots.slice(6)) await trTx('backups', 'readwrite', st => st.delete(old));   // keep 7
     return true;
   } catch { return false; }
 }
@@ -471,11 +476,13 @@ async function trProcess(rec, again){
           throw e; } }
       trLog(rec, 'uploaded'); await trPut(rec);
     }
-    const total = Math.max(1, Math.ceil((rec.duration || TR_STEP_SEC) / TR_STEP_SEC));
+    // Length unknown (the phone couldn't read it): carry on part by part until a part has no speech, so nothing is left out.
+    const known = rec.duration > 0, total = known ? Math.max(1, Math.ceil(rec.duration / TR_STEP_SEC)) : TR_MAX_PARTS;
     rec.parts = rec.parts || [];
     for (let i = rec.parts.length; i < total; i++){
-      trSetStep(rec, 'transcribe', total > 1 ? `Writing the Arabic and the English · part ${i + 1} of ${total}` : 'Writing the Arabic and the English');
-      const from = trMMSS(i * TR_STEP_SEC), to = trMMSS(Math.min(rec.duration || TR_STEP_SEC, (i + 1) * TR_STEP_SEC) + (i === total - 1 ? 5 : 0));
+      if (!known && i > 0 && !rec.parts[i - 1].length){ trLog(rec, `length unknown: part ${i} had no speech, so the recording ends there`); break; }
+      trSetStep(rec, 'transcribe', known ? (total > 1 ? `Writing the Arabic and the English · part ${i + 1} of ${total}` : 'Writing the Arabic and the English') : `Writing the Arabic and the English · part ${i + 1}`);
+      const from = trMMSS(i * TR_STEP_SEC), to = known ? trMMSS(Math.min(rec.duration, (i + 1) * TR_STEP_SEC) + (i === total - 1 ? 5 : 0)) : trMMSS((i + 1) * TR_STEP_SEC);
       const prev = rec.parts.flat(), speakers = [...new Map(prev.map(s => [s.speaker, `${s.speaker}${s.role && s.role !== 'unknown' ? ' (' + s.role + ')' : ''}`])).values()];
       const j = await trGenAny([{ file_data: { mime_type: rec.mime, file_uri: rec.file.uri } }, { text: trSegPrompt(from, to, speakers) }], TR_SEG_SCHEMA, { ...o, label: `part ${i + 1}` });
       o.prefer = o.prefer || rec.models?.at(-1);
@@ -515,10 +522,10 @@ async function trProcess(rec, again){
       delete rec.file; await trPut(rec); return trProcess(rec, true); }
     if (trKeyRefused(e) || (/^403/.test(e.message || '') && (again || !rec.file || rec.segments))){               // a key problem stops everything, not just this recording
       trBadKey = trKey();
-      const msg = 'Your Gemini key was not accepted. Check it in Settings. It continues by itself once the key works.';
+      const msg = 'Your Google key was not accepted. Check it in Settings. It continues by itself once the key works.';
       if (redo){ rec.redoNote = msg; rec.redoAt = 0; } else { rec.status = 'waiting'; rec.retryAt = 0; rec.error = msg; }
       trLog(rec, 'key refused: ' + e.message.slice(0, 120)); await trPut(rec);
-      if (!trKeyNoted){ trKeyNoted = true; trNotify({ ...rec, status: 'waiting', error: 'Your Gemini key was not accepted. Check it in Settings.' }); }
+      if (!trKeyNoted){ trKeyNoted = true; trNotify({ ...rec, status: 'waiting', error: 'Your Google key was not accepted. Check it in Settings.' }); }
       return 'stop';
     }
     if (redo){                                                          // the recording stays finished; say why this part is waiting
@@ -544,13 +551,13 @@ async function trProcess(rec, again){
 // Those can be finished, so they are put back as stopped, with their uploaded copy dropped so it is sent again.
 function trFixKeyFailed(r){
   if (r.status !== 'failed' || !/key was not accepted/.test(r.error || '')) return false;
-  r.status = 'paused'; r.error = 'This stopped because the Gemini key was not accepted. Tap Try again now to finish it.'; delete r.file;
+  r.status = 'paused'; r.error = 'This stopped because the Google key was not accepted. Tap Try again now to finish it.'; delete r.file;
   trLog(r, 'was marked failed for a key problem; now stopped, ready to try again'); return true;
 }
 var trKeyNoted = false;
 setInterval(() => { if (trBadKey && trKey() && trKey() !== trBadKey){ trBadKey = null; trKeyNoted = false; trResume(); } }, 3000);   // a new key was saved: carry on
 function trPlain(e){ const m = e?.message || String(e);
-  if (/API key not valid|API_KEY_INVALID|^403/.test(m)) return 'Your Gemini key was not accepted. Check it in Settings.';
+  if (/API key not valid|API_KEY_INVALID|^403/.test(m)) return 'Your Google key was not accepted. Check it in Settings.';
   if (/^400/.test(m) && /audio|mime|format|unsupported/i.test(m)) return 'Gemini could not read this audio format. Try MP3, M4A or WAV.';
   if (/missing/.test(m)) return m;
   return 'Something went wrong: ' + m.replace(/^\d{3}\s*/, '').slice(0, 160); }
@@ -576,11 +583,11 @@ function trHome(){
   trViewing = null;
   const key = !!trKey(), gate = trGate(), can = key && gate.ok;
   $app.innerHTML = `<div class="tr">
-    <div class="tr-head"><h1 class="title">Conversation Translator</h1>
+    <div class="tr-head"><h1 class="ltitle">Conversation Translator</h1>
       <p class="muted">Upload a recorded conversation in Egyptian Arabic. You get the Arabic transcript, an English translation, a summary and phrases to learn.</p></div>
     ${key && !gate.ok ? `<div class="card tr-paused" id="trPaused">${trI('clock')}<div><b>Translating paused${gate.until ? ` until ${trEsc(trWhen(gate.until))}` : ''}</b>
       <p>${gate.until ? `Today's free limit for the accurate models is used up. It starts again ${trIn(gate.until)}.` : 'No accurate Gemini model is available for this key.'}</p></div></div>` : ''}
-    ${key ? '' : `<div class="card tr-nokey">${trI('alert')}<div><b>Add your Gemini key first.</b><p class="muted">The Translator uses the same key as the voice tutor. Add it in Settings.</p></div><button class="btn primary" onclick="show('progress')">Open Settings</button></div>`}
+    ${key ? '' : `<div class="card tr-nokey">${trI('alert')}<div><b>Add your Google key first.</b><p class="muted">The Translator uses the same key as the voice tutor. Add it in Settings.</p></div><button class="btn primary" onclick="show('progress', null, { askKey: 'tr' })">Open Settings</button></div>`}
     <section class="card tr-up" aria-labelledby="tr-up-h">
       <h2 id="tr-up-h" class="tr-h2">${trI('upload')}Upload a recording</h2>
       <div id="trPick">
@@ -590,7 +597,7 @@ function trHome(){
       <div id="trChosen" hidden></div>
     </section>
     <section class="tr-hist" aria-labelledby="tr-hist-h">
-      <div class="tr-hist-top"><h2 id="tr-hist-h" class="tr-h2">History</h2></div>
+      <div class="tr-hist-top"><h2 id="tr-hist-h" class="tr-h2">History</h2><span class="muted small" id="trSpace"></span></div>
       <div id="trList" class="tr-list"><p class="muted small">Loading…</p></div>
     </section>
     ${TR_APP ? '' : `<details class="card tr-backup" id="trBackup"><summary><span class="tr-h2" style="margin:0">Backup</span>${trI('chev', 'tr-chev')}</summary>
@@ -609,23 +616,32 @@ function trHome(){
   clearTimeout(trGateTimer); if (key && !gate.ok && gate.until) trGateTimer = setTimeout(() => { if (document.getElementById('trFile')) trHome(); }, Math.min(gate.until - Date.now() + 2000, 2147483000));
 }
 var trGateTimer = 0;
+// A player needs a link to the recording's audio. Each link holds on to the audio until it is let go, so there is one at a
+// time for the chosen file and one for the results page: making a new one lets go of the one before.
+var trUrls = {};
+function trAudioUrl(kind, blob){ if (trUrls[kind]){ URL.revokeObjectURL(trUrls[kind]); delete trUrls[kind]; } return blob ? (trUrls[kind] = URL.createObjectURL(blob)) : ''; }
 function trChoose(f){
   if (!f) return;
   const ext = (f.name.split('.').pop() || '').toLowerCase(), mime = TR_MIME[ext] !== undefined ? TR_MIME[ext] : (/^audio\//.test(f.type) ? null : undefined);
   const box = document.getElementById('trChosen'), pick = document.getElementById('trPick');
   if (!mime){ box.hidden = false; box.innerHTML = `<div class="tr-err">${trI('alert')}<span><b>${trEsc(f.name)}</b> can't be used. Choose an MP3, M4A, WAV, AAC or OGG file.</span></div>`; return; }
   trPicked = { file: f, mime, duration: 0 };
-  const url = URL.createObjectURL(f);
+  const url = trAudioUrl('pick', f);
   pick.hidden = true; box.hidden = false;
   box.innerHTML = `<div class="tr-file">${trI('wave')}<div class="grow"><b>${trEsc(f.name)}</b><span class="muted small" id="trMeta">${(f.size / 1048576).toFixed(1)} MB · reading length…</span></div></div>
     <audio controls src="${url}" id="trPrev" class="tr-audio"></audio>
     <button class="btn primary block lg" id="trStart" disabled>${trI('play')}Start translating</button>
     <button class="btn ghost block" id="trOther">Choose a different file</button>`;
-  const a = document.getElementById('trPrev');
-  const ready = () => { const d = isFinite(a.duration) ? a.duration : 0; trPicked.duration = d;
-    document.getElementById('trMeta').textContent = `${(f.size / 1048576).toFixed(1)} MB · ${d ? trMMSS(d) : 'length unknown'}`;
-    const s = document.getElementById('trStart'); if (d > 9.5 * 3600){ s.disabled = true; document.getElementById('trMeta').textContent += ' · too long (9½ hours at most)'; } else s.disabled = false; };
-  a.onloadedmetadata = ready; a.onerror = ready; setTimeout(() => { if (document.getElementById('trStart')?.disabled && !trPicked.duration) ready(); }, 4000);
+  const a = document.getElementById('trPrev'), chosen = trPicked;
+  let seeking = false;
+  const ready = () => {
+    // Some recordings (often WebM) don't say how long they are until the player jumps to the end: jump there once, then back.
+    if (a.duration === Infinity && !seeking){ seeking = true; a.addEventListener('timeupdate', function back(){ a.removeEventListener('timeupdate', back); a.currentTime = 0; ready(); }); try { a.currentTime = 1e101; } catch {} return; }
+    const d = isFinite(a.duration) && a.duration > 0 ? a.duration : 0; chosen.duration = d;
+    const meta = document.getElementById('trMeta'), s = document.getElementById('trStart'); if (!meta || !s) return;
+    meta.textContent = `${(f.size / 1048576).toFixed(1)} MB · ${d ? trMMSS(d) : 'length unknown'}`;
+    if (d > 9.5 * 3600){ s.disabled = true; meta.textContent += ' · too long (9½ hours at most)'; } else s.disabled = false; };
+  a.onloadedmetadata = ready; a.onerror = ready; setTimeout(() => { if (document.getElementById('trStart')?.disabled && !chosen.duration) ready(); }, 4000);
   document.getElementById('trOther').onclick = () => { trPicked = null; trHome(); };
   document.getElementById('trStart').onclick = () => trStart();
 }
@@ -657,6 +673,15 @@ function trGroup(ms){
   const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));      // the Monday of that week
   return { key: 'w' + mon.getTime(), label: 'Week of ' + mon.toLocaleDateString([], { day: 'numeric', month: 'short', year: mon.getFullYear() !== today.getFullYear() ? 'numeric' : undefined }) };
 }
+// How much room the recordings' audio takes on this phone (finished recordings keep their audio until deleted).
+// Only recordings whose audio is still here count (one restored from a daily copy has none).
+var trSizeText = mb => mb < 1 ? 'less than 1 MB' : mb < 10 ? `${mb.toFixed(1)} MB` : mb < 1024 ? `${Math.round(mb)} MB` : `${(mb / 1024).toFixed(1)} GB`;
+async function trShowSpace(recs){
+  const el = document.getElementById('trSpace'); if (!el) return;
+  let keys = []; try { keys = await trTx('audio', 'readonly', s => s.getAllKeys()) || []; } catch {}
+  const here = new Set(keys), bytes = recs.filter(r => here.has(r.id)).reduce((n, r) => n + (r.size || 0), 0);
+  if (document.getElementById('trSpace') === el) el.textContent = bytes ? `${trSizeText(bytes / 1048576)} of audio on this phone` : '';
+}
 async function trRefreshHome(){
   const list = document.getElementById('trList'); if (!list) return;
   let recs = []; try { recs = await trAll(); } catch { list.innerHTML = `<p class="muted small">History isn't available in this browser.</p>`; return; }
@@ -665,6 +690,7 @@ async function trRefreshHome(){
     : r.status === 'waiting' ? '<span class="tag sand">Waiting</span>' : r.status === 'paused' ? '<span class="tag">Stopped</span>' : '<span class="tag tr-bad">Failed</span>';
   const row = r => `<button class="card tr-row" data-id="${r.id}">${trI('wave')}<span class="grow"><b>${trEsc(r.name)}</b><span class="muted small">${trWhen(r.created)}${r.duration ? ' · ' + trMMSS(r.duration) : ''}</span></span>${tag(r)}</button>`;
   if (await trCleanStopped(recs)){ recs = await trAll().catch(() => []); if (!document.getElementById('trList')) return; }
+  trShowSpace(recs);
   if (!recs.length){ list.innerHTML = `<p class="muted small">No recordings yet. Upload one above.</p>`; return; }
   // Today's recordings (and any not finished) stay in view; stopped ones go into one closed group; older finished ones
   // go into closed groups: one per day for the last week, then one per week.
@@ -756,10 +782,10 @@ async function trResult(rec){
   const blob = await trGetAudio(rec.id).catch(() => null);
   if (trViewing !== rec.id) return;
   if (trLastRes !== rec.id){ trLastRes = rec.id; trTab = 'conv'; }          // another recording opens on its transcript
-  const url = blob ? URL.createObjectURL(blob) : '', speakers = new Set((rec.segments || []).map(s => s.speaker)).size;
+  const url = trAudioUrl('result', blob), speakers = new Set((rec.segments || []).map(s => s.speaker)).size;
   $app.innerHTML = `<div class="tr tr-res" id="trRes" data-id="${rec.id}">
     <button class="btn ghost back" onclick="show('tr')">${trI('left', 'sm')}Translator</button>
-    <div class="tr-head"><h1 class="title tr-title">${trEsc(rec.name)}</h1>
+    <div class="tr-head"><h1 class="ltitle tr-title">${trEsc(rec.name)}</h1>
       <p class="muted small">${trWhen(rec.created)}${rec.duration ? ' · ' + trMMSS(rec.duration) : ''} · ${rec.segments.length} lines · ${speakers} ${speakers === 1 ? 'speaker' : 'speakers'}</p></div>
     <div class="tr-player">${url ? `<audio controls src="${url}" id="trAudio" class="tr-audio"></audio>` : '<p class="muted small">The audio is no longer on this phone.</p>'}</div>
     <div class="tr-tabs" role="tablist">${[['conv', 'Transcript'], ['sum', 'Summary'], ['learn', 'Learn']].map(([k, t]) => `<button role="tab" data-t="${k}" aria-selected="${trTab === k}">${t}</button>`).join('')}</div>
@@ -781,20 +807,22 @@ function trReport(rec){
     status: rec.status, message: rec.error || '', waitingUntil: rec.retryAt ? new Date(rec.retryAt).toString() : '',
     now: live ? { step: trLive.stepText, detail: trLive.detail, workingFor: trMMSS((Date.now() - trLive.started) / 1000) } : 'not running',
     totalTime: rec.doneAt ? trMMSS((rec.doneAt - (rec.startedAt || rec.created)) / 1000) : trMMSS((Date.now() - (rec.startedAt || rec.created)) / 1000) + ' so far',
-    progress: { uploaded: !!rec.file, partsDone: (rec.parts || []).length, partsTotal: Math.max(1, Math.ceil((rec.duration || TR_STEP_SEC) / TR_STEP_SEC)), lines: rec.segments?.length ?? null,
+    progress: { uploaded: !!rec.file, partsDone: (rec.parts || []).length, partsTotal: rec.duration > 0 ? Math.max(1, Math.ceil(rec.duration / TR_STEP_SEC)) : 'length unknown: until a part has no speech', lines: rec.segments?.length ?? null,
       summary: rec.summary === undefined ? 'not yet' : rec.summary?.error ? 'error' : 'done', learn: rec.learn === undefined ? 'not yet' : rec.learn?.error ? 'error' : 'done' },
     workingOnNow: trRunning && trCurRec ? (trCurRec.id === rec.id ? 'this recording' : trCurRec.name) : 'nothing',
     otherUnfinished: trQueueInfo.filter(x => x.id !== rec.id).map(x => `${x.name} · ${x.status}`),
     modelsUsed: rec.models || [], log: rec.log || [], removedByChecks: rec.dropped || [],
     phone: { installedApp: matchMedia('(display-mode: standalone)').matches, online: navigator.onLine, visible: document.visibilityState, screenOffMode: trAwake, screenOffAudioPlaying: !!(trAudioEl && !trAudioEl.paused),
-      notifications: window.Notification ? Notification.permission : 'not available', browser: navigator.userAgent },
+      notifications: window.Notification ? Notification.permission : 'not available', storageKept: trStorageKept, browser: navigator.userAgent },
     freeLimitsUsedUp: Object.fromEntries(Object.entries(trQuota()).filter(([, t]) => t > Date.now()).map(([m, t]) => [m, new Date(t).toString()])),
     accurateModels: trGate().ok ? 'available' : 'used up until ' + new Date(trGate().until || 0).toString(), redo: rec.redo || [], redoNote: rec.redoNote || '', transcript: rec.segments || (rec.parts || []).flat(), summary: rec.summary, learn: rec.learn,
   };
   return JSON.stringify(r, null, 1);
 }
 // While a job runs, its newest log lines are in memory and not saved yet, so the report uses the live record.
-async function trReportText(id){ trQueueInfo = (await trAll().catch(() => [])).filter(r => r.status !== 'done' || r.redo?.length).sort((a, b) => a.created - b.created); const rec = trRunning && trCurRec?.id === id ? trCurRec : await trGet(id).catch(() => null); return rec ? trReport(rec) : ''; }
+var trStorageKept = null;                                            // whether the browser has agreed to keep the app's data
+async function trReportText(id){ try { trStorageKept = navigator.storage?.persisted ? await navigator.storage.persisted() : null; } catch { trStorageKept = null; }
+  trQueueInfo =(await trAll().catch(() => [])).filter(r => r.status !== 'done' || r.redo?.length).sort((a, b) => a.created - b.created); const rec = trRunning && trCurRec?.id === id ? trCurRec : await trGet(id).catch(() => null); return rec ? trReport(rec) : ''; }
 async function trCopyReport(id){
   const text = await trReportText(id); if (!text) return;
   try { await navigator.clipboard.writeText(text); toast('Report copied. Paste it in the chat with Claude.'); return; } catch {}

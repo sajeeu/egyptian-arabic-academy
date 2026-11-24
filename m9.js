@@ -28,7 +28,12 @@ var M9I = {
   retry: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
   steth: '<path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6 6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6 6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/>'
 };
-function m9i(name, size = 18){ return `<svg class="ic" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${M9I[name]}</svg>`; }
+// The app's own icon (index.html ICONS) wherever it has one, so the same thing looks the same on every page.
+// M9I keeps the drawings the app doesn't have (users, shield, ear, list), and stands in if the app's set isn't there.
+var M9_APP_IC = { back: 'left', right: 'right', chevr: 'chevr', chevl: 'chevl', chevd: 'chev', check: 'check', play: 'playCircle', eye: 'eye', info: 'info', alert: 'alert',
+  headset: 'headset', chat: 'chat', book: 'book', volume: 'volume', slow: 'slow', mic: 'mic', retry: 'retry', steth: 'steth', ext: 'external' };
+function m9i(name, size = 18){ const app = typeof ICONS !== 'undefined' && ICONS[M9_APP_IC[name]];
+  return `<svg class="ic" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true">${app || M9I[name]}</svg>`; }
 function m9px(html){ return html.replace(/class="([^"]*)"/g, (m, c) => 'class="' + c.split(/\s+/).filter(Boolean).map(x => 'm9-' + x).join(' ') + '"'); }
 var M9_ST = '<circle class="ring" cx="12" cy="12" r="9"/><path class="half" d="M12 3a9 9 0 0 1 0 18z"/><path class="tick" d="m8 12.5 2.8 2.8 5.4-5.7"/>';
 
@@ -306,7 +311,7 @@ function m9Lesson(id, opts = {}){
   m9Render(`${opts.justFinished ? `<div data-raw="finish"></div>` : ''}
     ${m9Head('Module 09', 'm9', `<span class="pill green">${m9code(L)}</span>`)}
     <div class="stack g12">
-      <div class="stack g2"><h1 class="h2">${esc(L.title)}</h1><span class="xs">${esc(m9unitText(L))}</span></div>
+      <div class="stack g2"><h1 class="h1">${esc(L.title)}</h1><span class="xs">${esc(m9unitText(L))}</span></div>
       <div class="stack g8" id="m9prog">
         <div class="row between base g12"><span class="b" style="font-size: 14px">Turn ${v} of ${n}</span><span class="xs tc" style="color: var(--gink)">${s.confirmed.length} confirmed</span></div>
         <div class="track" role="img" aria-label="Turn ${v} of ${n}, ${s.confirmed.length} confirmed">${m9Track(n, v, s.confirmed, L.ex)}</div>
@@ -335,11 +340,11 @@ function m9Lesson(id, opts = {}){
         <div class="stack g10 acts">
           ${done ? `<div data-raw="done"></div>
           <button type="button" class="btn primary lg block go" id="toCur">Continue at turn ${s.idx}${m9i('right', 20)}</button>`
-          : block ? `<button type="button" class="btn primary lg block go" id="ok" disabled aria-describedby="whyBlock">Complete &amp; Next${m9i('right', 20)}</button>
+          : block ? `<button type="button" class="btn primary lg block go" id="ok" disabled aria-describedby="whyBlock">Complete &amp; next${m9i('right', 20)}</button>
           <div data-raw="block"></div>
           <button type="button" class="btn ghost block" id="toOpen">${m9i('chevl', 17)}Go to turn ${block.first}</button>`
-          : `<button type="button" class="btn primary lg block go" id="ok">Complete &amp; Next${m9i('right', 20)}</button>
-          <button type="button" class="btn ghost block" id="again">${m9i('retry', 17)}Not Complete — Practice Again</button>
+          : `<button type="button" class="btn primary lg block go" id="ok">Complete &amp; next${m9i('right', 20)}</button>
+          <button type="button" class="btn ghost block" id="again">${m9i('retry', 17)}Not complete — practise again</button>
           <div id="againMsg"></div>
           <p class="note">${m9i('info', 16)}<span>Tap Complete when <em>you</em> feel ready. It’s your own confirmation, not a pronunciation score.</span></p>`}
           <div data-raw="reset"></div>
