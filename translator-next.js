@@ -15,7 +15,7 @@
 var TR_ON = true;
 var TR_APP = typeof TR_IN_APP !== 'undefined' && !!TR_IN_APP;   // part of the app: its Settings backup covers recordings too
 try { localStorage.removeItem('eaa_translator'); } catch {}       // the old preview switch is no longer used
-var TR_VERSION = TR_APP ? 'translator v2 (app)' : 'translator-test v13';
+var TR_VERSION = TR_APP ? 'translator v2 (app)' : 'translator-test v14';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -421,7 +421,7 @@ async function trRun(){
       if (!trKey() || trKey() === trBadKey) break;     // no key, or the key Gemini just refused: wait until it is changed
       const all = await trAll();
       for (const r of all) if (trFixFinished(r) | trFixKeyFailed(r)) await trPut(r);
-      const recs = all.filter(r => r.status === 'working' || (r.status === 'waiting' && (r.retryAt || 0) <= Date.now()) || (r.status === 'done' && r.redo?.length && (r.redoAt || 0) <= Date.now())).sort((a, b) => a.created - b.created);
+      const recs = all.filter(r => r.status === 'working' || (r.status === 'waiting' && (r.retryAt || 0) <= Date.now()) || (r.status === 'done' && r.redo?.length && (r.redoAt || 0) <= Date.now())).sort((a, b) => (b.id === trFirst) - (a.id === trFirst) || a.created - b.created);
       if (!recs.length) break;
       const ok = await trProcess(recs[0]); trRefreshResult(recs[0].id);
       if (!ok){ trWasOffline = true; break; }           // paused by the phone or the network: carry on when the app is back
@@ -442,12 +442,19 @@ function trFixFinished(r){
   r.status = 'done'; r.redo = TR_SECTIONS.filter(k => r[k] === undefined || r[k]?.error); if (!r.redo.length) delete r.redo; return true;
 }
 async function trRefreshResult(id){ if (trViewing !== id || !document.getElementById('trRes')) return; const rec = await trGet(id).catch(() => null); if (rec && trViewing === id) trPane(rec); }
+// The recording she starts (or taps Continue / Try again on) goes first. Another one being worked on is set aside:
+// its finished parts are kept and it carries on afterwards.
+var trFirst = null, trSwitching = false;
+function trPutFirst(id){
+  trFirst = id;
+  if (trRunning && trCurRec && trCurRec.id !== id && trCtl){ trSwitching = true; trCtl.abort(); }
+}
 var trBadKey = null;   // the key Gemini refused (kept in memory only); nothing more is sent until the key changes
 var trKeyRefused = e => /API key not valid|API_KEY_INVALID|API key expired|API_KEY_EXPIRED|reported as leaked|SERVICE_DISABLED|has not been used in project|is disabled/i.test(e?.message || '');
 var trFileRefused = e => /^(403|404)/.test(e?.message || '') && !trKeyRefused(e);   // usually: the recording was uploaded with another key
 async function trProcess(rec, again){
   const redo = rec.status === 'done';                                 // only redoing a part of a finished recording: it stays finished
-  trCtl = new AbortController(); const signal = trCtl.signal; trCurRec = rec;
+  trCtl = new AbortController(); const signal = trCtl.signal; trCurRec = rec; trSwitching = false;
   trLog(rec, `job ${redo ? 'redoing ' + (rec.redo || []).join(', ') : rec.file || rec.parts?.length || rec.segments ? 'resumed' : 'started'} (screen-off mode ${trAwake ? 'on' : 'off'}, notifications ${window.Notification ? Notification.permission : 'not available'})`);
   if (!redo){ rec.status = 'working'; rec.error = ''; rec.retryAt = 0; rec.startedAt = rec.startedAt || Date.now(); }
   delete rec.waitNet; delete rec.redoNote; trLive.started = Date.now(); await trPut(rec);
@@ -515,6 +522,7 @@ async function trProcess(rec, again){
       return 'stop';
     }
     if (redo){                                                          // the recording stays finished; say why this part is waiting
+      if (/^STOPPED/.test(e.message) && trSwitching){ trSwitching = false; trLog(rec, 'set aside for the recording you started; it continues afterwards'); await trPut(rec); return true; }
       if (/^STOPPED/.test(e.message)){ delete rec.redo; await trPut(rec); return true; }
       if (e.offline){ trLog(rec, 'redo: connection lost; trying again in 30 s'); await trPut(rec); return false; }
       rec.redoAt = e.quota ? e.retryAt : Date.now() + 10 * 60000;
@@ -522,6 +530,7 @@ async function trProcess(rec, again){
       if (!e.quota && !e.busy) delete rec.redo;
       trLog(rec, 'redo: ' + e.message); await trPut(rec); return e.quota || e.busy ? 'stop' : true;
     }
+    if (/^STOPPED/.test(e.message) && trSwitching){ trSwitching = false; trLog(rec, 'set aside for the recording you started; it continues afterwards'); await trPut(rec); return true; }
     if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.error = 'Stopped by you'; await trPut(rec); return true; }
     if (e.offline){ trLog(rec, 'connection still lost after several tries; trying again in 30 s, or when the page is opened'); rec.waitNet = Date.now(); await trPut(rec); return false; }
     if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Paused until ${trWhen(e.retryAt)}: today's free limit for the accurate models is used up. It starts again ${trIn(e.retryAt)}.`; }
@@ -631,7 +640,7 @@ function trStart(){
   (async () => {
     try { await trTx('audio', 'readwrite', s => s.put(file, id)); await trPut(rec); }
     catch (e){ trKeepAwake(false); toast('The recording could not be saved on this phone. Free up some space and try again.'); return; }
-    show('trrec', id); trRun();
+    show('trrec', id); trPutFirst(id); trRun();
   })();
 }
 var trOpenGroups = new Set();                                        // History groups opened in this visit
@@ -710,7 +719,8 @@ async function trRefreshLoader(){
   } else {
     spin.classList.add('off'); document.getElementById('trElapsed').textContent = '';
     title.textContent = state === 'failed' ? 'Translation stopped' : state === 'paused' ? 'Translation stopped' : state === 'waiting' ? 'Translation is waiting' : 'Translation will continue';
-    html = trEsc(rec.error || (state === 'working' ? (rec.waitNet ? 'The phone stopped the connection. It tries again by itself every 30 seconds, and straight away when you open this page.' : 'It continues by itself while the Translator is open.') : ''));
+    const other = trRunning && trCurRec && trCurRec.id !== id ? trCurRec.name : '';
+    html = trEsc(rec.error || (state === 'working' && other ? `Another recording is being translated (${other}). This one starts after it, or tap Continue now to do this one first.` : state === 'working' ? (rec.waitNet ? 'The phone stopped the connection. It tries again by itself every 30 seconds, and straight away when you open this page.' : 'It continues by itself while the Translator is open.') : ''));
     b += `<button class="btn primary block" id="trGo">${trI('play')}${state === 'working' ? 'Continue now' : 'Try again now'}</button>`;
     b += `<button class="btn danger block" id="trDel">${trI('trash', 'sm')}Delete this recording</button>`;
   }
@@ -720,7 +730,7 @@ async function trRefreshLoader(){
 function trWireLoader(id){
   const go = document.getElementById('trGo'), stop = document.getElementById('trStop'), del = document.getElementById('trDel'), aw = document.getElementById('trAwakeBtn');
   if (aw) aw.onclick = () => { trKeepAwake(true); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch {} trRefreshLoader(); };
-  if (go) go.onclick = async () => { trKeepAwake(true); trBadKey = null; trKeyNoted = false; const rec = await trGet(id); rec.status = 'working'; rec.retryAt = 0; rec.error = ''; await trPut(rec); trRun(); trRefreshLoader(); };
+  if (go) go.onclick = async () => { trKeepAwake(true); trBadKey = null; trKeyNoted = false; const rec = await trGet(id); rec.status = 'working'; rec.retryAt = 0; rec.error = ''; await trPut(rec); trPutFirst(id); trRun(); trRefreshLoader(); };
   if (stop) trTwoTap(stop, 'Tap again to stop', () => { trCtl?.abort(); });
   if (del) trTwoTap(del, 'Tap again to delete', async () => { if (trLive.id === id) trCtl?.abort(); await trDelete(id); show('tr'); });
 }
@@ -755,6 +765,7 @@ async function trResult(rec){
   trPane(rec);
 }
 /* Report for Claude: what happened, step by step, with timings and phone events. Never includes the key. */
+var trQueueInfo = [];
 function trReport(rec){
   const live = trRunning && trLive.id === rec.id, r = {
     page: TR_VERSION, at: new Date().toString(),
@@ -764,6 +775,8 @@ function trReport(rec){
     totalTime: rec.doneAt ? trMMSS((rec.doneAt - (rec.startedAt || rec.created)) / 1000) : trMMSS((Date.now() - (rec.startedAt || rec.created)) / 1000) + ' so far',
     progress: { uploaded: !!rec.file, partsDone: (rec.parts || []).length, partsTotal: Math.max(1, Math.ceil((rec.duration || TR_STEP_SEC) / TR_STEP_SEC)), lines: rec.segments?.length ?? null,
       summary: rec.summary === undefined ? 'not yet' : rec.summary?.error ? 'error' : 'done', learn: rec.learn === undefined ? 'not yet' : rec.learn?.error ? 'error' : 'done' },
+    workingOnNow: trRunning && trCurRec ? (trCurRec.id === rec.id ? 'this recording' : trCurRec.name) : 'nothing',
+    otherUnfinished: trQueueInfo.filter(x => x.id !== rec.id).map(x => `${x.name} · ${x.status}`),
     modelsUsed: rec.models || [], log: rec.log || [], removedByChecks: rec.dropped || [],
     phone: { installedApp: matchMedia('(display-mode: standalone)').matches, online: navigator.onLine, visible: document.visibilityState, screenOffMode: trAwake, screenOffAudioPlaying: !!(trAudioEl && !trAudioEl.paused),
       notifications: window.Notification ? Notification.permission : 'not available', browser: navigator.userAgent },
@@ -773,7 +786,7 @@ function trReport(rec){
   return JSON.stringify(r, null, 1);
 }
 // While a job runs, its newest log lines are in memory and not saved yet, so the report uses the live record.
-async function trReportText(id){ const rec = trRunning && trCurRec?.id === id ? trCurRec : await trGet(id).catch(() => null); return rec ? trReport(rec) : ''; }
+async function trReportText(id){ trQueueInfo = (await trAll().catch(() => [])).filter(r => r.status !== 'done' || r.redo?.length).sort((a, b) => a.created - b.created); const rec = trRunning && trCurRec?.id === id ? trCurRec : await trGet(id).catch(() => null); return rec ? trReport(rec) : ''; }
 async function trCopyReport(id){
   const text = await trReportText(id); if (!text) return;
   try { await navigator.clipboard.writeText(text); toast('Report copied. Paste it in the chat with Claude.'); return; } catch {}
