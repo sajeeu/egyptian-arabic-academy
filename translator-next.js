@@ -15,7 +15,7 @@
 var TR_ON = true;
 var TR_APP = typeof TR_IN_APP !== 'undefined' && !!TR_IN_APP;   // part of the app: its Settings backup covers recordings too
 try { localStorage.removeItem('eaa_translator'); } catch {}       // the old preview switch is no longer used
-var TR_VERSION = TR_APP ? 'translator v2 (app)' : 'translator-test v14';
+var TR_VERSION = TR_APP ? 'translator v2 (app)' : 'translator-test v15';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -107,7 +107,7 @@ async function trRestore(recordings){
     const rec = item.rec || item; if (!rec || !rec.id || !rec.name){ skipped++; continue; }
     if (await trGet(rec.id)){ skipped++; continue; }
     trDeleted.delete(rec.id);                                          // restoring it on purpose
-    const r = { ...rec }; if (r.status !== 'done' && r.status !== 'failed'){ r.status = 'paused'; r.error = 'Restored from a backup. Tap Try again now to finish it.'; }
+    const r = { ...rec }; if (r.status !== 'done' && r.status !== 'failed'){ r.status = 'paused'; r.stoppedAt = Date.now(); r.error = 'Restored from a backup. Tap Try again now to finish it.'; }
     if (item.audio && item.audio.data){ try { await trTx('audio', 'readwrite', st => st.put(trB64Blob(item.audio.data, item.audio.type || r.mime), r.id)); } catch {} }
     await trPut(r); added++;
   }
@@ -531,7 +531,7 @@ async function trProcess(rec, again){
       trLog(rec, 'redo: ' + e.message); await trPut(rec); return e.quota || e.busy ? 'stop' : true;
     }
     if (/^STOPPED/.test(e.message) && trSwitching){ trSwitching = false; trLog(rec, 'set aside for the recording you started; it continues afterwards'); await trPut(rec); return true; }
-    if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.error = 'Stopped by you'; await trPut(rec); return true; }
+    if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.stoppedAt = Date.now(); rec.error = 'Stopped by you'; await trPut(rec); return true; }
     if (e.offline){ trLog(rec, 'connection still lost after several tries; trying again in 30 s, or when the page is opened'); rec.waitNet = Date.now(); await trPut(rec); return false; }
     if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Paused until ${trWhen(e.retryAt)}: today's free limit for the accurate models is used up. It starts again ${trIn(e.retryAt)}.`; }
     else if (e.busy){ rec.status = 'waiting'; rec.retryAt = Date.now() + 10 * 60000; rec.error = 'The free Gemini service stayed busy. It tries again in about 10 minutes while the Translator is open.'; }
@@ -562,7 +562,7 @@ addEventListener('load', () => {
   trSW();
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data?.trOpen) show('trrec', e.data.trOpen); });
   try { const q = new URLSearchParams(location.search), id = q.get('tr'); if (id){ q.delete('tr'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); show('trrec', id); } } catch {}
-  setTimeout(trResume, 1500); setTimeout(() => trClearNotes(), 2500);
+  setTimeout(trResume, 1500); setTimeout(() => trClearNotes(), 2500); setTimeout(() => trCleanStopped(), 3000);
   if (!TR_APP){ trDailyBackup(); setInterval(trDailyBackup, 60000); }   // in the app, its daily backup makes this copy
 });
 function trEvent(text){ if (trRunning && trCurRec) trLog(trCurRec, 'phone: ' + text, /hidden|paused|offline/.test(text)); }
@@ -643,6 +643,10 @@ function trStart(){
     show('trrec', id); trPutFirst(id); trRun();
   })();
 }
+// Stopped recordings are deleted a day after they stopped (or, for older ones, a day after they were added).
+var TR_STOPPED_KEEP_MS = 24 * 3600000;
+var trStoppedOld = r => r.status === 'paused' && Date.now() - (r.stoppedAt || r.created || 0) > TR_STOPPED_KEEP_MS && trLive.id !== r.id;
+async function trCleanStopped(recs){ let n = 0; for (const r of recs || await trAll().catch(() => [])) if (trStoppedOld(r)){ await trDelete(r.id); n++; } return n; }
 var trOpenGroups = new Set();                                        // History groups opened in this visit
 function trGroup(ms){
   const day = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
@@ -660,13 +664,17 @@ async function trRefreshHome(){
   const tag = r => r.status === 'done' ? '<span class="tag green">Ready</span>' : r.status === 'working' ? `<span class="tag sand">${trLive.id === r.id ? 'Translating…' : 'Waiting to continue'}</span>`
     : r.status === 'waiting' ? '<span class="tag sand">Waiting</span>' : r.status === 'paused' ? '<span class="tag">Stopped</span>' : '<span class="tag tr-bad">Failed</span>';
   const row = r => `<button class="card tr-row" data-id="${r.id}">${trI('wave')}<span class="grow"><b>${trEsc(r.name)}</b><span class="muted small">${trWhen(r.created)}${r.duration ? ' · ' + trMMSS(r.duration) : ''}</span></span>${tag(r)}</button>`;
+  if (await trCleanStopped(recs)){ recs = await trAll().catch(() => []); if (!document.getElementById('trList')) return; }
   if (!recs.length){ list.innerHTML = `<p class="muted small">No recordings yet. Upload one above.</p>`; return; }
-  // Today's recordings (and any not finished) stay in view; older ones go into closed groups: one per day for the last week, then one per week.
-  const top = recs.filter(r => r.status !== 'done' || trGroup(r.created).key === 'today'), groups = new Map();
-  for (const r of recs) if (!top.includes(r)){ const g = trGroup(r.created); if (!groups.has(g.key)) groups.set(g.key, { ...g, recs: [] }); groups.get(g.key).recs.push(r); }
+  // Today's recordings (and any not finished) stay in view; stopped ones go into one closed group; older finished ones
+  // go into closed groups: one per day for the last week, then one per week.
+  const stopped = recs.filter(r => r.status === 'paused');
+  const top = recs.filter(r => r.status !== 'paused' && (r.status !== 'done' || trGroup(r.created).key === 'today')), groups = new Map();
+  if (stopped.length) groups.set('stopped', { key: 'stopped', label: 'Stopped', note: 'Stopped recordings are deleted after a day.', recs: stopped });
+  for (const r of recs) if (!top.includes(r) && r.status !== 'paused'){ const g = trGroup(r.created); if (!groups.has(g.key)) groups.set(g.key, { ...g, recs: [] }); groups.get(g.key).recs.push(r); }
   list.innerHTML = top.map(row).join('') + [...groups.values()].map(g => `<details class="tr-group" data-g="${g.key}"${trOpenGroups.has(g.key) ? ' open' : ''}>
     <summary><span class="grow">${trEsc(g.label)}</span><span class="muted small">${g.recs.length} ${g.recs.length === 1 ? 'recording' : 'recordings'}</span>${trI('chev', 'tr-chev')}</summary>
-    <div class="tr-group-list">${g.recs.map(row).join('')}</div></details>`).join('');
+    <div class="tr-group-list">${g.note ? `<p class="muted small tr-group-note" style="margin:2px 6px 0">${trEsc(g.note)}</p>` : ''}${g.recs.map(row).join('')}</div></details>`).join('');
   list.querySelectorAll('.tr-row').forEach(b => b.onclick = () => show('trrec', b.dataset.id));
   list.querySelectorAll('.tr-group').forEach(d => d.addEventListener('toggle', () => { d.open ? trOpenGroups.add(d.dataset.g) : trOpenGroups.delete(d.dataset.g); }));
 }
