@@ -15,7 +15,7 @@
 var TR_ON = true;
 var TR_APP = typeof TR_IN_APP !== 'undefined' && !!TR_IN_APP;   // part of the app: its Settings backup covers recordings too
 try { localStorage.removeItem('eaa_translator'); } catch {}       // the old preview switch is no longer used
-var TR_VERSION = TR_APP ? 'translator v1 (app)' : 'translator-test v12';
+var TR_VERSION = TR_APP ? 'translator v2 (app)' : 'translator-test v12';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -373,10 +373,26 @@ function trMedia(){
 }
 var trSWp = null;
 function trSW(){ if (!('serviceWorker' in navigator)) return Promise.resolve(null); return trSWp || (trSWp = navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).catch(() => null)); }
+// Phone notifications only while she isn't looking at the app; in the app a short message is enough.
+// "Ready" has one notification per recording. Every problem shares one notification, so a new one replaces the last.
 async function trNotify(rec){
-  const body = rec.status === 'done' ? `${rec.name} · tap to see the translation` : `${rec.name} · ${rec.error || 'it stopped'}`;
-  try { if (window.Notification && Notification.permission === 'granted'){ const reg = await trSW(); if (reg){ await reg.showNotification(rec.status === 'done' ? 'Translation ready' : 'Translation paused', { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: 'tr-' + rec.id, data: { id: rec.id, url: location.pathname } }); return; } } } catch {}
-  if (document.visibilityState === 'visible' && typeof toast === 'function') toast(rec.status === 'done' ? `Translation ready: ${trEsc(rec.name)}` : `Translation paused: ${trEsc(rec.error || '')}`);
+  const done = rec.status === 'done';
+  if (document.visibilityState === 'visible'){ if (typeof toast === 'function') toast(done ? `Translation ready: ${trEsc(rec.name)}` : `Translation paused: ${trEsc(rec.error || '')}`); return; }
+  const body = done ? `${rec.name} · tap to see the translation` : `${rec.name} · ${rec.error || 'it stopped'}`;
+  try { if (window.Notification && Notification.permission === 'granted'){ const reg = await trSW(); if (reg) await reg.showNotification(done ? 'Translation ready' : 'Translation paused', { body, icon: 'icon-192.png', badge: 'icon-192.png', tag: done ? 'tr-' + rec.id : 'tr-problem', data: { id: rec.id, url: location.pathname } }); } } catch {}
+}
+// Remove notifications that are out of date: every "paused" one once the app is open (the Translator page shows
+// what is waiting), and a "ready" one once that recording has been opened or deleted.
+async function trClearNotes(openedId){
+  try {
+    if (!('serviceWorker' in navigator) || !window.Notification || Notification.permission !== 'granted') return;
+    const reg = await trSW(); if (!reg || !reg.getNotifications) return;
+    const notes = await reg.getNotifications(); if (!notes.length) return;
+    const ids = new Set((await trAll().catch(() => [])).map(r => r.id));
+    for (const n of notes){ const id = n.data?.id;
+      if (!/^tr-/.test(n.tag || '')) continue;
+      if (n.title !== 'Translation ready' || id === openedId || (id && !ids.has(id))) n.close(); }
+  } catch {}
 }
 
 /* ---------- The job: upload, transcribe in parts, summary, explanations, phrases ---------- */
@@ -392,13 +408,14 @@ async function trRun(){
   if (!trAwake) trKeepAwake(true);                                   // allowed if she has tapped in the app before; otherwise the loader offers a button
   try {
     for (;;){
-      if (!trKey()) break;
+      if (!trKey() || trKey() === trBadKey) break;     // no key, or the key Gemini just refused: wait until it is changed
       const all = await trAll();
-      for (const r of all) if (trFixFinished(r)) await trPut(r);
+      for (const r of all) if (trFixFinished(r) | trFixKeyFailed(r)) await trPut(r);
       const recs = all.filter(r => r.status === 'working' || (r.status === 'waiting' && (r.retryAt || 0) <= Date.now()) || (r.status === 'done' && r.redo?.length && (r.redoAt || 0) <= Date.now())).sort((a, b) => a.created - b.created);
       if (!recs.length) break;
       const ok = await trProcess(recs[0]); trRefreshResult(recs[0].id);
       if (!ok){ trWasOffline = true; break; }           // paused by the phone or the network: carry on when the app is back
+      if (ok === 'stop') break;                         // the key was refused, the free limit is used up or Gemini stayed busy: the next recording would only stop the same way
     }
   } finally { trRunning = false; trCtl = null; trLive.id = null; if (!trWasOffline) trKeepAwake(false); trRefreshLoader(); trRefreshHome();
     if (trWasOffline) setTimeout(trResume, navigator.onLine ? 30000 : 5000); }
@@ -415,7 +432,10 @@ function trFixFinished(r){
   r.status = 'done'; r.redo = TR_SECTIONS.filter(k => r[k] === undefined || r[k]?.error); if (!r.redo.length) delete r.redo; return true;
 }
 async function trRefreshResult(id){ if (trViewing !== id || !document.getElementById('trRes')) return; const rec = await trGet(id).catch(() => null); if (rec && trViewing === id) trPane(rec); }
-async function trProcess(rec){
+var trBadKey = null;   // the key Gemini refused (kept in memory only); nothing more is sent until the key changes
+var trKeyRefused = e => /API key not valid|API_KEY_INVALID|API key expired|API_KEY_EXPIRED|reported as leaked|SERVICE_DISABLED|has not been used in project|is disabled/i.test(e?.message || '');
+var trFileRefused = e => /^(403|404)/.test(e?.message || '') && !trKeyRefused(e);   // usually: the recording was uploaded with another key
+async function trProcess(rec, again){
   const redo = rec.status === 'done';                                 // only redoing a part of a finished recording: it stays finished
   trCtl = new AbortController(); const signal = trCtl.signal; trCurRec = rec;
   trLog(rec, `job ${redo ? 'redoing ' + (rec.redo || []).join(', ') : rec.file || rec.parts?.length || rec.segments ? 'resumed' : 'started'} (screen-off mode ${trAwake ? 'on' : 'off'}, notifications ${window.Notification ? Notification.permission : 'not available'})`);
@@ -472,13 +492,25 @@ async function trProcess(rec){
     trNotify(rec);
     return true;
   } catch (e){
+    // Gemini refused the uploaded copy (for example, it was uploaded with an older key): send the recording again, once.
+    if (!again && rec.file && !rec.segments && trFileRefused(e)){
+      trLog(rec, `the uploaded copy could not be used (${e.message.slice(0, 80)}); sending the recording again`);
+      delete rec.file; await trPut(rec); return trProcess(rec, true); }
+    if (trKeyRefused(e) || (/^403/.test(e.message || '') && (again || !rec.file || rec.segments))){               // a key problem stops everything, not just this recording
+      trBadKey = trKey();
+      const msg = 'Your Gemini key was not accepted. Check it in Settings. It continues by itself once the key works.';
+      if (redo){ rec.redoNote = msg; rec.redoAt = 0; } else { rec.status = 'waiting'; rec.retryAt = 0; rec.error = msg; }
+      trLog(rec, 'key refused: ' + e.message.slice(0, 120)); await trPut(rec);
+      if (!trKeyNoted){ trKeyNoted = true; trNotify({ ...rec, status: 'waiting', error: 'Your Gemini key was not accepted. Check it in Settings.' }); }
+      return 'stop';
+    }
     if (redo){                                                          // the recording stays finished; say why this part is waiting
       if (/^STOPPED/.test(e.message)){ delete rec.redo; await trPut(rec); return true; }
       if (e.offline){ trLog(rec, 'redo: connection lost; trying again in 30 s'); await trPut(rec); return false; }
       rec.redoAt = e.quota ? e.retryAt : Date.now() + 10 * 60000;
       rec.redoNote = e.quota ? `Paused until ${trWhen(rec.redoAt)}: today's free limit for the accurate models is used up. It starts again ${trIn(rec.redoAt)}.` : e.busy ? 'The free Gemini service is busy. It tries again by itself in about 10 minutes.' : trPlain(e);
       if (!e.quota && !e.busy) delete rec.redo;
-      trLog(rec, 'redo: ' + e.message); await trPut(rec); return true;
+      trLog(rec, 'redo: ' + e.message); await trPut(rec); return e.quota || e.busy ? 'stop' : true;
     }
     if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.error = 'Stopped by you'; await trPut(rec); return true; }
     if (e.offline){ trLog(rec, 'connection still lost after several tries; trying again in 30 s, or when the page is opened'); rec.waitNet = Date.now(); await trPut(rec); return false; }
@@ -486,9 +518,18 @@ async function trProcess(rec){
     else if (e.busy){ rec.status = 'waiting'; rec.retryAt = Date.now() + 10 * 60000; rec.error = 'The free Gemini service stayed busy. It tries again in about 10 minutes while the Translator is open.'; }
     else { rec.status = 'failed'; rec.error = trPlain(e); }
     trLog(rec, e.message); await trPut(rec); trNotify(rec);
-    return true;
+    return e.quota || e.busy ? 'stop' : true;
   }
 }
+// Earlier versions marked every waiting recording "Failed" when the key was refused (one notification each).
+// Those can be finished, so they are put back as stopped, with their uploaded copy dropped so it is sent again.
+function trFixKeyFailed(r){
+  if (r.status !== 'failed' || !/key was not accepted/.test(r.error || '')) return false;
+  r.status = 'paused'; r.error = 'This stopped because the Gemini key was not accepted. Tap Try again now to finish it.'; delete r.file;
+  trLog(r, 'was marked failed for a key problem; now stopped, ready to try again'); return true;
+}
+var trKeyNoted = false;
+setInterval(() => { if (trBadKey && trKey() && trKey() !== trBadKey){ trBadKey = null; trKeyNoted = false; trResume(); } }, 3000);   // a new key was saved: carry on
 function trPlain(e){ const m = e?.message || String(e);
   if (/API key not valid|API_KEY_INVALID|^403/.test(m)) return 'Your Gemini key was not accepted. Check it in Settings.';
   if (/^400/.test(m) && /audio|mime|format|unsupported/i.test(m)) return 'Gemini could not read this audio format. Try MP3, M4A or WAV.';
@@ -502,11 +543,11 @@ addEventListener('load', () => {
   trSW();
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data?.trOpen) show('trrec', e.data.trOpen); });
   try { const q = new URLSearchParams(location.search), id = q.get('tr'); if (id){ q.delete('tr'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); show('trrec', id); } } catch {}
-  setTimeout(trResume, 1500);
+  setTimeout(trResume, 1500); setTimeout(() => trClearNotes(), 2500);
   if (!TR_APP){ trDailyBackup(); setInterval(trDailyBackup, 60000); }   // in the app, its daily backup makes this copy
 });
 function trEvent(text){ if (trRunning && trCurRec) trLog(trCurRec, 'phone: ' + text, /hidden|paused|offline/.test(text)); }
-document.addEventListener('visibilitychange', () => { trEvent(document.visibilityState === 'hidden' ? 'page hidden (screen off or another app)' : 'page visible again'); if (document.visibilityState === 'visible') trResume(); });
+document.addEventListener('visibilitychange', () => { trEvent(document.visibilityState === 'hidden' ? 'page hidden (screen off or another app)' : 'page visible again'); if (document.visibilityState === 'visible'){ trResume(); trClearNotes(); } });
 addEventListener('online', () => { trEvent('back online'); trResume(); });
 addEventListener('offline', () => trEvent('went offline'));
 
@@ -613,7 +654,7 @@ async function trRefreshHome(){
 
 /* Loader: shown from upload until everything is finished. All the work happens out of sight. */
 async function trRec(id){
-  trViewing = id;
+  trViewing = id; trClearNotes(id);
   const rec = await trGet(id).catch(() => null);
   if (trViewing !== id) return;
   if (!rec){ $app.innerHTML = `<div class="tr"><button class="btn ghost back" onclick="show('tr')">${trI('left', 'sm')}Translator</button><div class="card"><p>This recording isn't on this phone any more.</p></div></div>`; return; }
@@ -669,7 +710,7 @@ async function trRefreshLoader(){
 function trWireLoader(id){
   const go = document.getElementById('trGo'), stop = document.getElementById('trStop'), del = document.getElementById('trDel'), aw = document.getElementById('trAwakeBtn');
   if (aw) aw.onclick = () => { trKeepAwake(true); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch {} trRefreshLoader(); };
-  if (go) go.onclick = async () => { trKeepAwake(true); const rec = await trGet(id); rec.status = 'working'; rec.retryAt = 0; rec.error = ''; await trPut(rec); trRun(); trRefreshLoader(); };
+  if (go) go.onclick = async () => { trKeepAwake(true); trBadKey = null; trKeyNoted = false; const rec = await trGet(id); rec.status = 'working'; rec.retryAt = 0; rec.error = ''; await trPut(rec); trRun(); trRefreshLoader(); };
   if (stop) trTwoTap(stop, 'Tap again to stop', () => { trCtl?.abort(); });
   if (del) trTwoTap(del, 'Tap again to delete', async () => { if (trLive.id === id) trCtl?.abort(); await trDelete(id); show('tr'); });
 }
