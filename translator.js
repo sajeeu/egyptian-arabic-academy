@@ -15,7 +15,7 @@
 var TR_ON = true;
 var TR_APP = typeof TR_IN_APP !== 'undefined' && !!TR_IN_APP;   // part of the app: its Settings backup covers recordings too
 try { localStorage.removeItem('eaa_translator'); } catch {}       // the old preview switch is no longer used
-var TR_VERSION = TR_APP ? 'translator v2 (app)' : 'translator-test v12';
+var TR_VERSION = TR_APP ? 'translator v3 (app)' : 'translator-test v15';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
@@ -107,7 +107,7 @@ async function trRestore(recordings){
     const rec = item.rec || item; if (!rec || !rec.id || !rec.name){ skipped++; continue; }
     if (await trGet(rec.id)){ skipped++; continue; }
     trDeleted.delete(rec.id);                                          // restoring it on purpose
-    const r = { ...rec }; if (r.status !== 'done' && r.status !== 'failed'){ r.status = 'paused'; r.error = 'Restored from a backup. Tap Try again now to finish it.'; }
+    const r = { ...rec }; if (r.status !== 'done' && r.status !== 'failed'){ r.status = 'paused'; r.stoppedAt = Date.now(); r.error = 'Restored from a backup. Tap Try again now to finish it.'; }
     if (item.audio && item.audio.data){ try { await trTx('audio', 'readwrite', st => st.put(trB64Blob(item.audio.data, item.audio.type || r.mime), r.id)); } catch {} }
     await trPut(r); added++;
   }
@@ -345,22 +345,32 @@ function trClean(kind, val, rec){
 
 /* ---------- Keep running with the screen off, and say when it's ready ---------- */
 var trAudioEl = null, trAwake = false, trAudioOn = false;
-function trSilentWav(){   // 2 seconds of near-silence (tiny noise, inaudible), so the phone treats the page as playing audio
+var TR_HUM_HZ = 20, TR_HUM_AMP = 50;   // a 20 Hz hum at about -56 dB: phone speakers can't play it, but Chrome counts it as sound (its silence line is about -72 dB)
+function trSilentWav(){   // 2 seconds of a hum nobody can hear, looped, so the phone treats the page as playing audio and keeps it running
   const sr = 8000, n = sr * 2, b = new ArrayBuffer(44 + n * 2), v = new DataView(b), w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
   w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
   v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, (Math.random() * 3 | 0) - 1, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(TR_HUM_AMP * Math.sin(2 * Math.PI * TR_HUM_HZ * i / sr)), true);   // whole cycles, so the loop has no click
   return URL.createObjectURL(new Blob([b], { type: 'audio/wav' }));
 }
 function trKeepAwake(on){      // call from a tap when turning on: phones only start audio after a tap
   try {
     if (on){
-      if (!trAudioEl){ trAudioEl = new Audio(trSilentWav()); trAudioEl.loop = true; trAudioEl.setAttribute('playsinline', ''); trAudioEl.addEventListener('pause', () => { if (trAwake) trEvent('screen-off audio was paused by the phone'); trAudioOn = false; }); trAudioEl.addEventListener('playing', () => { if (!trAudioOn) trEvent('screen-off audio playing'); trAudioOn = true; }); }
+      if (!trAudioEl){ trAudioEl = new Audio(trSilentWav()); trAudioEl.loop = true; trAudioEl.setAttribute('playsinline', ''); trAudioEl.addEventListener('pause', () => { trAudioOn = false; if (trAwake){ trEvent('screen-off audio was paused by the phone'); trAudioAgain(); } }); trAudioEl.addEventListener('playing', () => { if (!trAudioOn) trEvent('screen-off audio playing'); trAudioOn = true; }); }
       const p = trAudioEl.play(); trAwake = true;
       if (p && p.catch) p.catch(() => { trAwake = false; trTick(); });
       trMedia();
     } else if (trAudioEl){ trAudioEl.pause(); trAwake = false; if ('mediaSession' in navigator){ navigator.mediaSession.playbackState = 'none'; navigator.mediaSession.metadata = null; } }
   } catch { trAwake = false; }
+}
+// The phone paused the screen-off audio: start it again (a few tries each time the screen goes off; the phone may refuse).
+var trAudioTries = 0;
+function trAudioAgain(){
+  if (trAudioTries >= 3) return; trAudioTries++;
+  setTimeout(() => {
+    if (!trAwake || !trRunning || !trAudioEl || !trAudioEl.paused) return;
+    try { const p = trAudioEl.play(); if (p && p.then) p.then(() => trEvent('screen-off audio started again'), () => trEvent('the phone would not start the screen-off audio again')); } catch {}
+  }, 1000);
 }
 function trMedia(){
   if (!('mediaSession' in navigator) || !trAwake) return;
@@ -411,7 +421,7 @@ async function trRun(){
       if (!trKey() || trKey() === trBadKey) break;     // no key, or the key Gemini just refused: wait until it is changed
       const all = await trAll();
       for (const r of all) if (trFixFinished(r) | trFixKeyFailed(r)) await trPut(r);
-      const recs = all.filter(r => r.status === 'working' || (r.status === 'waiting' && (r.retryAt || 0) <= Date.now()) || (r.status === 'done' && r.redo?.length && (r.redoAt || 0) <= Date.now())).sort((a, b) => a.created - b.created);
+      const recs = all.filter(r => r.status === 'working' || (r.status === 'waiting' && (r.retryAt || 0) <= Date.now()) || (r.status === 'done' && r.redo?.length && (r.redoAt || 0) <= Date.now())).sort((a, b) => (b.id === trFirst) - (a.id === trFirst) || a.created - b.created);
       if (!recs.length) break;
       const ok = await trProcess(recs[0]); trRefreshResult(recs[0].id);
       if (!ok){ trWasOffline = true; break; }           // paused by the phone or the network: carry on when the app is back
@@ -432,12 +442,19 @@ function trFixFinished(r){
   r.status = 'done'; r.redo = TR_SECTIONS.filter(k => r[k] === undefined || r[k]?.error); if (!r.redo.length) delete r.redo; return true;
 }
 async function trRefreshResult(id){ if (trViewing !== id || !document.getElementById('trRes')) return; const rec = await trGet(id).catch(() => null); if (rec && trViewing === id) trPane(rec); }
+// The recording she starts (or taps Continue / Try again on) goes first. Another one being worked on is set aside:
+// its finished parts are kept and it carries on afterwards.
+var trFirst = null, trSwitching = false;
+function trPutFirst(id){
+  trFirst = id;
+  if (trRunning && trCurRec && trCurRec.id !== id && trCtl){ trSwitching = true; trCtl.abort(); }
+}
 var trBadKey = null;   // the key Gemini refused (kept in memory only); nothing more is sent until the key changes
 var trKeyRefused = e => /API key not valid|API_KEY_INVALID|API key expired|API_KEY_EXPIRED|reported as leaked|SERVICE_DISABLED|has not been used in project|is disabled/i.test(e?.message || '');
 var trFileRefused = e => /^(403|404)/.test(e?.message || '') && !trKeyRefused(e);   // usually: the recording was uploaded with another key
 async function trProcess(rec, again){
   const redo = rec.status === 'done';                                 // only redoing a part of a finished recording: it stays finished
-  trCtl = new AbortController(); const signal = trCtl.signal; trCurRec = rec;
+  trCtl = new AbortController(); const signal = trCtl.signal; trCurRec = rec; trSwitching = false;
   trLog(rec, `job ${redo ? 'redoing ' + (rec.redo || []).join(', ') : rec.file || rec.parts?.length || rec.segments ? 'resumed' : 'started'} (screen-off mode ${trAwake ? 'on' : 'off'}, notifications ${window.Notification ? Notification.permission : 'not available'})`);
   if (!redo){ rec.status = 'working'; rec.error = ''; rec.retryAt = 0; rec.startedAt = rec.startedAt || Date.now(); }
   delete rec.waitNet; delete rec.redoNote; trLive.started = Date.now(); await trPut(rec);
@@ -505,6 +522,7 @@ async function trProcess(rec, again){
       return 'stop';
     }
     if (redo){                                                          // the recording stays finished; say why this part is waiting
+      if (/^STOPPED/.test(e.message) && trSwitching){ trSwitching = false; trLog(rec, 'set aside for the recording you started; it continues afterwards'); await trPut(rec); return true; }
       if (/^STOPPED/.test(e.message)){ delete rec.redo; await trPut(rec); return true; }
       if (e.offline){ trLog(rec, 'redo: connection lost; trying again in 30 s'); await trPut(rec); return false; }
       rec.redoAt = e.quota ? e.retryAt : Date.now() + 10 * 60000;
@@ -512,7 +530,8 @@ async function trProcess(rec, again){
       if (!e.quota && !e.busy) delete rec.redo;
       trLog(rec, 'redo: ' + e.message); await trPut(rec); return e.quota || e.busy ? 'stop' : true;
     }
-    if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.error = 'Stopped by you'; await trPut(rec); return true; }
+    if (/^STOPPED/.test(e.message) && trSwitching){ trSwitching = false; trLog(rec, 'set aside for the recording you started; it continues afterwards'); await trPut(rec); return true; }
+    if (/^STOPPED/.test(e.message)){ rec.status = 'paused'; rec.stoppedAt = Date.now(); rec.error = 'Stopped by you'; await trPut(rec); return true; }
     if (e.offline){ trLog(rec, 'connection still lost after several tries; trying again in 30 s, or when the page is opened'); rec.waitNet = Date.now(); await trPut(rec); return false; }
     if (e.quota){ rec.status = 'waiting'; rec.retryAt = e.retryAt; rec.error = `Paused until ${trWhen(e.retryAt)}: today's free limit for the accurate models is used up. It starts again ${trIn(e.retryAt)}.`; }
     else if (e.busy){ rec.status = 'waiting'; rec.retryAt = Date.now() + 10 * 60000; rec.error = 'The free Gemini service stayed busy. It tries again in about 10 minutes while the Translator is open.'; }
@@ -543,11 +562,11 @@ addEventListener('load', () => {
   trSW();
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data?.trOpen) show('trrec', e.data.trOpen); });
   try { const q = new URLSearchParams(location.search), id = q.get('tr'); if (id){ q.delete('tr'); history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '')); show('trrec', id); } } catch {}
-  setTimeout(trResume, 1500); setTimeout(() => trClearNotes(), 2500);
+  setTimeout(trResume, 1500); setTimeout(() => trClearNotes(), 2500); setTimeout(() => trCleanStopped(), 3000);
   if (!TR_APP){ trDailyBackup(); setInterval(trDailyBackup, 60000); }   // in the app, its daily backup makes this copy
 });
 function trEvent(text){ if (trRunning && trCurRec) trLog(trCurRec, 'phone: ' + text, /hidden|paused|offline/.test(text)); }
-document.addEventListener('visibilitychange', () => { trEvent(document.visibilityState === 'hidden' ? 'page hidden (screen off or another app)' : 'page visible again'); if (document.visibilityState === 'visible'){ trResume(); trClearNotes(); } });
+document.addEventListener('visibilitychange', () => { trAudioTries = 0; trEvent(document.visibilityState === 'hidden' ? 'page hidden (screen off or another app)' : 'page visible again'); if (document.visibilityState === 'visible'){ trResume(); trClearNotes(); } });
 addEventListener('online', () => { trEvent('back online'); trResume(); });
 addEventListener('offline', () => trEvent('went offline'));
 
@@ -621,9 +640,13 @@ function trStart(){
   (async () => {
     try { await trTx('audio', 'readwrite', s => s.put(file, id)); await trPut(rec); }
     catch (e){ trKeepAwake(false); toast('The recording could not be saved on this phone. Free up some space and try again.'); return; }
-    show('trrec', id); trRun();
+    show('trrec', id); trPutFirst(id); trRun();
   })();
 }
+// Stopped recordings are deleted a day after they stopped (or, for older ones, a day after they were added).
+var TR_STOPPED_KEEP_MS = 24 * 3600000;
+var trStoppedOld = r => r.status === 'paused' && Date.now() - (r.stoppedAt || r.created || 0) > TR_STOPPED_KEEP_MS && trLive.id !== r.id;
+async function trCleanStopped(recs){ let n = 0; for (const r of recs || await trAll().catch(() => [])) if (trStoppedOld(r)){ await trDelete(r.id); n++; } return n; }
 var trOpenGroups = new Set();                                        // History groups opened in this visit
 function trGroup(ms){
   const day = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
@@ -641,13 +664,17 @@ async function trRefreshHome(){
   const tag = r => r.status === 'done' ? '<span class="tag green">Ready</span>' : r.status === 'working' ? `<span class="tag sand">${trLive.id === r.id ? 'Translating…' : 'Waiting to continue'}</span>`
     : r.status === 'waiting' ? '<span class="tag sand">Waiting</span>' : r.status === 'paused' ? '<span class="tag">Stopped</span>' : '<span class="tag tr-bad">Failed</span>';
   const row = r => `<button class="card tr-row" data-id="${r.id}">${trI('wave')}<span class="grow"><b>${trEsc(r.name)}</b><span class="muted small">${trWhen(r.created)}${r.duration ? ' · ' + trMMSS(r.duration) : ''}</span></span>${tag(r)}</button>`;
+  if (await trCleanStopped(recs)){ recs = await trAll().catch(() => []); if (!document.getElementById('trList')) return; }
   if (!recs.length){ list.innerHTML = `<p class="muted small">No recordings yet. Upload one above.</p>`; return; }
-  // Today's recordings (and any not finished) stay in view; older ones go into closed groups: one per day for the last week, then one per week.
-  const top = recs.filter(r => r.status !== 'done' || trGroup(r.created).key === 'today'), groups = new Map();
-  for (const r of recs) if (!top.includes(r)){ const g = trGroup(r.created); if (!groups.has(g.key)) groups.set(g.key, { ...g, recs: [] }); groups.get(g.key).recs.push(r); }
+  // Today's recordings (and any not finished) stay in view; stopped ones go into one closed group; older finished ones
+  // go into closed groups: one per day for the last week, then one per week.
+  const stopped = recs.filter(r => r.status === 'paused');
+  const top = recs.filter(r => r.status !== 'paused' && (r.status !== 'done' || trGroup(r.created).key === 'today')), groups = new Map();
+  if (stopped.length) groups.set('stopped', { key: 'stopped', label: 'Stopped', note: 'Stopped recordings are deleted after a day.', recs: stopped });
+  for (const r of recs) if (!top.includes(r) && r.status !== 'paused'){ const g = trGroup(r.created); if (!groups.has(g.key)) groups.set(g.key, { ...g, recs: [] }); groups.get(g.key).recs.push(r); }
   list.innerHTML = top.map(row).join('') + [...groups.values()].map(g => `<details class="tr-group" data-g="${g.key}"${trOpenGroups.has(g.key) ? ' open' : ''}>
     <summary><span class="grow">${trEsc(g.label)}</span><span class="muted small">${g.recs.length} ${g.recs.length === 1 ? 'recording' : 'recordings'}</span>${trI('chev', 'tr-chev')}</summary>
-    <div class="tr-group-list">${g.recs.map(row).join('')}</div></details>`).join('');
+    <div class="tr-group-list">${g.note ? `<p class="muted small tr-group-note" style="margin:2px 6px 0">${trEsc(g.note)}</p>` : ''}${g.recs.map(row).join('')}</div></details>`).join('');
   list.querySelectorAll('.tr-row').forEach(b => b.onclick = () => show('trrec', b.dataset.id));
   list.querySelectorAll('.tr-group').forEach(d => d.addEventListener('toggle', () => { d.open ? trOpenGroups.add(d.dataset.g) : trOpenGroups.delete(d.dataset.g); }));
 }
@@ -700,7 +727,8 @@ async function trRefreshLoader(){
   } else {
     spin.classList.add('off'); document.getElementById('trElapsed').textContent = '';
     title.textContent = state === 'failed' ? 'Translation stopped' : state === 'paused' ? 'Translation stopped' : state === 'waiting' ? 'Translation is waiting' : 'Translation will continue';
-    html = trEsc(rec.error || (state === 'working' ? (rec.waitNet ? 'The phone stopped the connection. It tries again by itself every 30 seconds, and straight away when you open this page.' : 'It continues by itself while the Translator is open.') : ''));
+    const other = trRunning && trCurRec && trCurRec.id !== id ? trCurRec.name : '';
+    html = trEsc(rec.error || (state === 'working' && other ? `Another recording is being translated (${other}). This one starts after it, or tap Continue now to do this one first.` : state === 'working' ? (rec.waitNet ? 'The phone stopped the connection. It tries again by itself every 30 seconds, and straight away when you open this page.' : 'It continues by itself while the Translator is open.') : ''));
     b += `<button class="btn primary block" id="trGo">${trI('play')}${state === 'working' ? 'Continue now' : 'Try again now'}</button>`;
     b += `<button class="btn danger block" id="trDel">${trI('trash', 'sm')}Delete this recording</button>`;
   }
@@ -710,7 +738,7 @@ async function trRefreshLoader(){
 function trWireLoader(id){
   const go = document.getElementById('trGo'), stop = document.getElementById('trStop'), del = document.getElementById('trDel'), aw = document.getElementById('trAwakeBtn');
   if (aw) aw.onclick = () => { trKeepAwake(true); try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); } catch {} trRefreshLoader(); };
-  if (go) go.onclick = async () => { trKeepAwake(true); trBadKey = null; trKeyNoted = false; const rec = await trGet(id); rec.status = 'working'; rec.retryAt = 0; rec.error = ''; await trPut(rec); trRun(); trRefreshLoader(); };
+  if (go) go.onclick = async () => { trKeepAwake(true); trBadKey = null; trKeyNoted = false; const rec = await trGet(id); rec.status = 'working'; rec.retryAt = 0; rec.error = ''; await trPut(rec); trPutFirst(id); trRun(); trRefreshLoader(); };
   if (stop) trTwoTap(stop, 'Tap again to stop', () => { trCtl?.abort(); });
   if (del) trTwoTap(del, 'Tap again to delete', async () => { if (trLive.id === id) trCtl?.abort(); await trDelete(id); show('tr'); });
 }
@@ -745,6 +773,7 @@ async function trResult(rec){
   trPane(rec);
 }
 /* Report for Claude: what happened, step by step, with timings and phone events. Never includes the key. */
+var trQueueInfo = [];
 function trReport(rec){
   const live = trRunning && trLive.id === rec.id, r = {
     page: TR_VERSION, at: new Date().toString(),
@@ -754,16 +783,18 @@ function trReport(rec){
     totalTime: rec.doneAt ? trMMSS((rec.doneAt - (rec.startedAt || rec.created)) / 1000) : trMMSS((Date.now() - (rec.startedAt || rec.created)) / 1000) + ' so far',
     progress: { uploaded: !!rec.file, partsDone: (rec.parts || []).length, partsTotal: Math.max(1, Math.ceil((rec.duration || TR_STEP_SEC) / TR_STEP_SEC)), lines: rec.segments?.length ?? null,
       summary: rec.summary === undefined ? 'not yet' : rec.summary?.error ? 'error' : 'done', learn: rec.learn === undefined ? 'not yet' : rec.learn?.error ? 'error' : 'done' },
+    workingOnNow: trRunning && trCurRec ? (trCurRec.id === rec.id ? 'this recording' : trCurRec.name) : 'nothing',
+    otherUnfinished: trQueueInfo.filter(x => x.id !== rec.id).map(x => `${x.name} · ${x.status}`),
     modelsUsed: rec.models || [], log: rec.log || [], removedByChecks: rec.dropped || [],
     phone: { installedApp: matchMedia('(display-mode: standalone)').matches, online: navigator.onLine, visible: document.visibilityState, screenOffMode: trAwake, screenOffAudioPlaying: !!(trAudioEl && !trAudioEl.paused),
       notifications: window.Notification ? Notification.permission : 'not available', browser: navigator.userAgent },
-    freeLimitsUsedUp: Object.fromEntries(Object.entries(trQuota()).map(([m, t]) => [m, new Date(t).toString()])),
+    freeLimitsUsedUp: Object.fromEntries(Object.entries(trQuota()).filter(([, t]) => t > Date.now()).map(([m, t]) => [m, new Date(t).toString()])),
     accurateModels: trGate().ok ? 'available' : 'used up until ' + new Date(trGate().until || 0).toString(), redo: rec.redo || [], redoNote: rec.redoNote || '', transcript: rec.segments || (rec.parts || []).flat(), summary: rec.summary, learn: rec.learn,
   };
   return JSON.stringify(r, null, 1);
 }
 // While a job runs, its newest log lines are in memory and not saved yet, so the report uses the live record.
-async function trReportText(id){ const rec = trRunning && trCurRec?.id === id ? trCurRec : await trGet(id).catch(() => null); return rec ? trReport(rec) : ''; }
+async function trReportText(id){ trQueueInfo = (await trAll().catch(() => [])).filter(r => r.status !== 'done' || r.redo?.length).sort((a, b) => a.created - b.created); const rec = trRunning && trCurRec?.id === id ? trCurRec : await trGet(id).catch(() => null); return rec ? trReport(rec) : ''; }
 async function trCopyReport(id){
   const text = await trReportText(id); if (!text) return;
   try { await navigator.clipboard.writeText(text); toast('Report copied. Paste it in the chat with Claude.'); return; } catch {}

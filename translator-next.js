@@ -15,7 +15,7 @@
 var TR_ON = true;
 var TR_APP = typeof TR_IN_APP !== 'undefined' && !!TR_IN_APP;   // part of the app: its Settings backup covers recordings too
 try { localStorage.removeItem('eaa_translator'); } catch {}       // the old preview switch is no longer used
-var TR_VERSION = TR_APP ? 'translator v2 (app)' : 'translator-test v15';
+var TR_VERSION = TR_APP ? 'translator v3 (app)' : 'translator-test v15';
 var TR_NET_RETRY_MS = [5000, 10000, 20000, 30000];   // waits before trying again when the phone drops the connection
 var TR_API = 'https://generativelanguage.googleapis.com';
 var TR_STEP_SEC = 600;                                    // long recordings are done in 10-minute parts
